@@ -24,6 +24,20 @@ const ResetPass = Loadable(
   lazy(() => import("../views/authentication/ResetPass"))
 );
 
+/* ****Publicaciones***** */
+const PublicacionesList = Loadable(
+  lazy(() => import("../views/publicaciones/PublicacionesList"))
+);
+const CreatePublicacion = Loadable(
+  lazy(() => import("../views/publicaciones/CreatePublicacion"))
+);
+const PublicacionDetail = Loadable(
+  lazy(() => import("../views/publicaciones/PublicacionDetail"))
+);
+const EditPublicacion = Loadable(
+  lazy(() => import("../views/publicaciones/EditPublicacion"))
+);
+
 /* ****End Pages***** */
 
 const Router = [
@@ -60,12 +74,32 @@ const Router = [
       {
         path: "",
         exact: true,
-        element: <Home />,
+        element: <Navigate to="/publicaciones" />,
       },
       {
         path: "home",
         exact: true,
         element: <Home />,
+      },
+      {
+        path: "publicaciones",
+        exact: true,
+        element: <PublicacionesList />,
+      },
+      {
+        path: "publicaciones/crear",
+        exact: true,
+        element: <CreatePublicacion />,
+      },
+      {
+        path: "publicaciones/:id",
+        exact: true,
+        element: <PublicacionDetail />,
+      },
+      {
+        path: "publicaciones/editar/:id",
+        exact: true,
+        element: <EditPublicacion />,
       },
       { path: "*", element: <Navigate to="/error/404" /> },
     ],
