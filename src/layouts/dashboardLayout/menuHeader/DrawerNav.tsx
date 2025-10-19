@@ -2,6 +2,7 @@ import { Avatar, Box, Drawer, Typography } from "@mui/material";
 import logo from "../../../assets/EII_logo.png";
 import { JSX } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import pulgaShopLogo from "../../../assets/pulgaShop_logo.png";
 
 interface DrawerNavProps {
   closeMenuAction: () => void;
@@ -18,8 +19,8 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
   const location = useLocation();
 
   return (
-    <Drawer anchor={"right"} open={openMenu} onClose={closeMenuAction}>
-      <Box className="flex flex-col justify-between bg-(--color-white-smoke) p-4 w-[100vw] h-[100vh]">
+    <Drawer anchor={"left"} open={openMenu} onClose={closeMenuAction}>
+      <Box className="flex flex-col justify-between bg-white p-4 w-[280px] h-[100vh]">
         <div>
           <Box className="flex flex-row justify-between p-4 items-center">
             <div className="flex items-center justify-between">
@@ -109,20 +110,19 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
             })}
           </Box>
         </div>
-        <Box className="flex flex-col items-center p-4 gap-3">
-          <img
-            src={logo}
-            className="w-[60%] max-w-[380px]"
-          />
-          <p
-            className=" text-md font-normal leading-6 cursor-pointer underline p-1 text-(--color-darkgreen)"
-            onClick={() => {
-              navigate("/auth/login");
-            }}
-          >
-            Cerrar sesión
-          </p>
-        </Box>
+      <Box className="flex flex-col items-center p-4 gap-3">
+        {/* comentar esto para el nuevo diseño */}
+        { <img src={pulgaShopLogo} alt="Logo de PulgaShop" className="w-[60%] max-w-[380px]" /> }
+
+        <p
+          className=" text-md font-normal leading-6 cursor-pointer underline p-1 text-gray-700"
+          onClick={() => {
+            navigate("/auth/login");
+          }}
+        >
+          Cerrar sesión
+        </p>
+      </Box>
       </Box>
     </Drawer>
   );
