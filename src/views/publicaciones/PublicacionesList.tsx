@@ -9,16 +9,13 @@ import {
   Button,
   Grid,
   Chip,
-  IconButton,
   TextField,
   InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
-  Share as ShareIcon,
+  
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
 
@@ -36,6 +33,7 @@ const PublicacionesList = () => {
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<'TODAS' | 'ACTIVAS' | 'REVISION' | 'ELIMINADAS'>('TODAS');
 
   useEffect(() => {
     loadPublicaciones();
@@ -53,9 +51,20 @@ const PublicacionesList = () => {
     }
   };
 
+  const matchesStatus = (pub: Publicacion) => {
+    const estado = (pub.estado || '').toUpperCase();
+    if (filter === 'TODAS') return true;
+    if (filter === 'ACTIVAS') return estado === 'ACTIVO';
+    if (filter === 'REVISION') return estado === 'EN REVISION' || estado === 'EN_REVISION' || estado.includes('REVISION');
+    if (filter === 'ELIMINADAS') return estado.includes('ELIMIN') || estado === 'ELIMINADO' || estado === 'ELIMINADA';
+    return true;
+  };
+
   const filteredPublicaciones = publicaciones.filter((pub) =>
-    pub.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pub.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    matchesStatus(pub) && (
+      pub.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pub.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   const handleViewDetails = (id: string) => {
@@ -69,29 +78,50 @@ const PublicacionesList = () => {
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2E7D32' }}>
           Mis Publicaciones
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreateNew}
-          sx={{
-            backgroundColor: '#4CAF50',
-            '&:hover': { backgroundColor: '#45A049' },
-            borderRadius: '25px',
-            textTransform: 'none',
-            fontSize: '16px',
-            px: 3,
-          }}
-        >
-          Nueva Publicación
-        </Button>
       </Box>
 
       {/* Search Bar */}
-      <TextField
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Button
+            size="small"
+            variant={filter === 'TODAS' ? 'contained' : 'outlined'}
+            onClick={() => setFilter('TODAS')}
+            sx={{ textTransform: 'none' }}
+          >
+            Todas
+          </Button>
+          <Button
+            size="small"
+            variant={filter === 'ACTIVAS' ? 'contained' : 'outlined'}
+            onClick={() => setFilter('ACTIVAS')}
+            sx={{ textTransform: 'none' }}
+          >
+            Activas
+          </Button>
+          <Button
+            size="small"
+            variant={filter === 'REVISION' ? 'contained' : 'outlined'}
+            onClick={() => setFilter('REVISION')}
+            sx={{ textTransform: 'none' }}
+          >
+            En revisión
+          </Button>
+          <Button
+            size="small"
+            variant={filter === 'ELIMINADAS' ? 'contained' : 'outlined'}
+            onClick={() => setFilter('ELIMINADAS')}
+            sx={{ textTransform: 'none' }}
+          >
+            Eliminadas
+          </Button>
+        </Box>
+
+        <TextField
         fullWidth
         placeholder="Buscar publicaciones..."
         value={searchTerm}
@@ -105,6 +135,7 @@ const PublicacionesList = () => {
           ),
         }}
       />
+      </Box>
 
       {/* Grid de Publicaciones */}
       {loading ? (
@@ -193,12 +224,21 @@ const PublicacionesList = () => {
             sx={{
               mt: 2,
               backgroundColor: '#4CAF50',
-              '&:hover': { backgroundColor: '#45A049' },
               borderRadius: '25px',
               textTransform: 'none',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              padding: '12px 32px',
+              boxShadow: '0 4px 10px rgba(76, 175, 80, 0.3)',
+              transition: 'all 0.3s ease',
+              '&:hover': { 
+                backgroundColor: '#45A049',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 12px rgba(76, 175, 80, 0.4)'
+              }
             }}
           >
-            Crear primera publicación
+            Crear Publicación
           </Button>
         </Box>
       )}

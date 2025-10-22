@@ -40,7 +40,7 @@ const CreatePublicacion = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
   
   const [formData, setFormData] = useState({
     titulo: '',
@@ -85,18 +85,18 @@ const CreatePublicacion = () => {
 
     const fileArray = Array.from(files);
     
-    // Validar cantidad total (máximo 10 imágenes)
-    if (images.length + fileArray.length > 10) {
+    // Validar cantidad total (máximo 6 imágenes)
+    if (images.length + fileArray.length > 6) {
       setSnackbar({ 
         open: true, 
-        message: 'No puedes subir más de 10 imágenes en total', 
+        message: 'No puedes subir más de 6 imágenes en total', 
         severity: 'error' 
       });
       return;
     }
 
     // Validar cada archivo
-    const validation = uploadService.validateMultipleImages(fileArray, 10 - images.length);
+    const validation = uploadService.validateMultipleImages(fileArray, 6 - images.length);
     if (!validation.valid) {
       setSnackbar({ open: true, message: validation.error || 'Error en validación', severity: 'error' });
       return;
@@ -208,7 +208,11 @@ const CreatePublicacion = () => {
 
       const publicacion = await publicacionesService.create(dto);
       
-      setSnackbar({ open: true, message: 'Publicación creada exitosamente', severity: 'success' });
+      setSnackbar({ 
+        open: true, 
+        message: '¡Tu publicación fue enviada a revisión!', 
+        severity: 'warning' 
+      });
       
       // Redirigir después de 1.5 segundos
       setTimeout(() => {
@@ -318,7 +322,7 @@ const CreatePublicacion = () => {
                   Click para agregar imágenes
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Máximo 10 imágenes, 5MB cada una
+                  Máximo 6 imágenes, 5MB cada una
                 </Typography>
               </Box>
             )}
@@ -350,7 +354,7 @@ const CreatePublicacion = () => {
             ))}
             
             {/* Botón agregar imagen */}
-            {images.length < 10 && (
+            {images.length < 6 && (
               <Box
                 onClick={handleAddImageClick}
                 sx={{
@@ -375,7 +379,7 @@ const CreatePublicacion = () => {
           {/* Indicador de páginas y progreso de upload */}
           <Box sx={{ textAlign: 'center', pb: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              {images.length > 0 ? `${currentImageIndex + 1}/${images.length}` : '0/10 imágenes'}
+              {images.length > 0 ? `${currentImageIndex + 1}/${images.length}` : '0/6 imágenes'}
             </Typography>
             {uploadingImages && (
               <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
@@ -400,8 +404,8 @@ const CreatePublicacion = () => {
               value={formData.titulo}
               onChange={(e) => handleInputChange('titulo', e.target.value)}
               error={!!errors.titulo}
-              helperText={errors.titulo || `${formData.titulo.length}/100 caracteres`}
-              inputProps={{ maxLength: 100 }}
+              helperText={errors.titulo || `${formData.titulo.length}/80 caracteres`}
+              inputProps={{ maxLength: 80 }}
               InputProps={{
                 endAdornment: formData.titulo.length >= 5 && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
@@ -420,8 +424,8 @@ const CreatePublicacion = () => {
               value={formData.descripcion}
               onChange={(e) => handleInputChange('descripcion', e.target.value)}
               error={!!errors.descripcion}
-              helperText={errors.descripcion || `${formData.descripcion.length}/1000 caracteres`}
-              inputProps={{ maxLength: 1000 }}
+              helperText={errors.descripcion || `${formData.descripcion.length}/500 caracteres`}
+              inputProps={{ maxLength: 500 }}
               InputProps={{
                 endAdornment: formData.descripcion.length >= 10 && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
@@ -513,10 +517,35 @@ const CreatePublicacion = () => {
       {/* Snackbar para mensajes */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={8000}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert 
+          severity={snackbar.severity} 
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          sx={{
+            '&.MuiAlert-standardWarning': {
+              backgroundColor: '#FEF5D5',
+              color: '#664D03',
+              border: '1px solid rgba(102, 77, 3, 0.1)',
+              borderRadius: '8px',
+              '& .MuiAlert-icon': {
+                color: '#664D03'
+              }
+            },
+            fontSize: '1rem',
+            alignItems: 'center',
+            width: '100%',
+            maxWidth: '400px',
+            margin: '0 auto',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            '& .MuiAlert-message': {
+              padding: '10px 0',
+              fontWeight: '500'
+            }
+          }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

@@ -382,8 +382,8 @@ const EditPublicacion = () => {
               value={formData.titulo}
               onChange={(e) => handleInputChange('titulo', e.target.value)}
               error={!!errors.titulo}
-              helperText={errors.titulo || `${formData.titulo.length}/100 caracteres`}
-              inputProps={{ maxLength: 100 }}
+              helperText={errors.titulo || `${formData.titulo.length}/80 caracteres`}
+              inputProps={{ maxLength: 80 }}
               InputProps={{
                 endAdornment: formData.titulo.length >= 5 && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
@@ -401,8 +401,8 @@ const EditPublicacion = () => {
               value={formData.descripcion}
               onChange={(e) => handleInputChange('descripcion', e.target.value)}
               error={!!errors.descripcion}
-              helperText={errors.descripcion || `${formData.descripcion.length}/1000 caracteres`}
-              inputProps={{ maxLength: 1000 }}
+              helperText={errors.descripcion || `${formData.descripcion.length}/500 caracteres`}
+              inputProps={{ maxLength: 500 }}
               InputProps={{
                 endAdornment: formData.descripcion.length >= 10 && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
