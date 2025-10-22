@@ -223,7 +223,7 @@ const EditPublicacion = () => {
   }
 
   return (
-    <Box sx={{ backgroundColor: '#F5F5F5', minHeight: '100vh', pb: 3 }}>
+    <Box sx={{ backgroundColor: '#F3FAF3', minHeight: '100vh', pb: 3 }}>
       {/* Header con fondo verde */}
       <Box sx={{ backgroundColor: '#4CAF50', color: 'white', p: 2, display: 'flex', alignItems: 'center' }}>
         <IconButton onClick={() => navigate(`/publicaciones/${id}`)} sx={{ color: 'white', mr: 2 }}>

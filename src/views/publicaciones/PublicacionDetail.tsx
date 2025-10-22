@@ -21,7 +21,6 @@ import {
   Delete as DeleteIcon,
   Share as ShareIcon,
   Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
   MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
@@ -50,7 +49,7 @@ const PublicacionDetail = () => {
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [liked, setLiked] = useState(false);
+  
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
@@ -116,7 +115,7 @@ const PublicacionDetail = () => {
   const multimedia = publicacion.multimedia || [];
 
   return (
-    <Box sx={{ backgroundColor: '#F5F5F5', minHeight: '100vh', pb: 3 }}>
+    <Box sx={{ backgroundColor: '#F3FAF3', minHeight: '100vh', pb: 3 }}>
       {/* Header con fondo verde */}
       <Box sx={{ backgroundColor: '#4CAF50', color: 'white', p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
