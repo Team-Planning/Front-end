@@ -8,6 +8,7 @@ import DrawerNav from "./DrawerNav";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+
 interface HeaderGPIProps {
   isMobile?: boolean;
 }
@@ -84,12 +85,29 @@ function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
   return (
     <>
       {isMobile ? (
-        <nav>
-          <div className="h-16 w-full bg-(--color-darkgreen)">
-            <div className="flex w-full h-full items-center justify-end p-4 py-0">
+ <nav>
+          {/* CAMBIO DE ESTILO: Color de fondo y padding */}
+          {/* De h-16 w-full bg-(--color-darkgreen) a una barra superior más clara con padding */}
+          <div className="h-16 w-full bg-white shadow-md">
+            <div className="flex w-full h-full items-center justify-between p-4 py-0">
+              
+              {/* Nuevo: Logo/Título a la izquierda */}
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 'bold',
+                  color: '#4CAF50', // Color verde para el título
+                  cursor: 'pointer'
+                }}
+                onClick={() => redirectTo('/home')}
+              >
+                PULGASHOP
+              </Typography>
+
+              {/* Contenedor del ícono de hamburguesa */}
               <div
                 onClick={openMenuAction}
-                className="cursor-pointer p-2 text-white hover:bg-white rounded-full hover:bg-opacity-10 hover:text-(--color-darkgreen)"
+                className="cursor-pointer p-2 text-black hover:bg-gray-100 rounded-full" // Ícono de hamburguesa en color oscuro
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
