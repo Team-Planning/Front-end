@@ -1,5 +1,7 @@
 # 🎨 Frontend - Sistema de Publicaciones
 
+#aa
+
 ## ✅ Aplicación Frontend Completada
 
 Frontend desarrollado con **React + TypeScript + Material-UI** que se conecta al backend de publicaciones.
