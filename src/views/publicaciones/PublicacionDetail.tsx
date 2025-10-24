@@ -78,18 +78,26 @@ const PublicacionDetail = () => {
 
   const handleDelete = async () => {
     try {
-      await publicacionesService.delete(id!);
-      setSnackbar({ open: true, message: 'Publicación eliminada correctamente', severity: 'success' });
+      await publicacionesService.cambiarEstado(id!, 'ELIMINADA'); // ✅ misma lógica que las tarjetas
+      setSnackbar({
+        open: true,
+        message: 'Publicación movida a Eliminadas correctamente',
+        severity: 'success',
+      });
       setTimeout(() => {
         navigate('/publicaciones');
       }, 1500);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar publicación:', error);
-      setSnackbar({ open: true, message: 'Error al eliminar la publicación', severity: 'error' });
+      const msg =
+        error?.response?.data?.message ||
+        'Error al mover la publicación a Eliminadas.';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setDeleteDialogOpen(false);
     }
   };
+
 
   const handleShare = () => {
     // Simular compartir
@@ -238,10 +246,15 @@ const PublicacionDetail = () => {
             </Typography>
           </Box>
 
-          {/* Precio (si existe en el futuro) */}
           <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4CAF50', mb: 2 }}>
-            PRECIO: $70.000
+            {publicacion.precio
+              ? `PRECIO: ${new Intl.NumberFormat('es-CL', {
+                  style: 'currency',
+                  currency: 'CLP',
+                }).format(publicacion.precio)}`
+              : 'PRECIO: No disponible'}
           </Typography>
+
 
           {/* Estado */}
           <Chip

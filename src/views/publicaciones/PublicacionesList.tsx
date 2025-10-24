@@ -11,11 +11,14 @@ import {
   Chip,
   TextField,
   InputAdornment,
+  CircularProgress,
+  IconButton,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  
+  Delete as DeleteIcon,
+  RestoreFromTrash as RestoreIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
 
@@ -26,9 +29,11 @@ const ESTADO_COLORS: Record<string, string> = {
   'PAUSADO': '#FFA726',
   'VENDIDO': '#42A5F5',
   'RECHAZADO': '#EF5350',
+  'ELIMINADO': '#9E9E9E',
+  'ELIMINADA': '#9E9E9E',
 };
 
-const PublicacionesList = () => {
+export default function PublicacionesList() {
   const navigate = useNavigate();
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +47,7 @@ const PublicacionesList = () => {
   const loadPublicaciones = async () => {
     try {
       setLoading(true);
-      const data = await publicacionesService.getAll();
+      const data = await publicacionesService.getAll({ includeEliminadas: true });
       setPublicaciones(data);
     } catch (error) {
       console.error('Error al cargar publicaciones:', error);
@@ -52,81 +57,84 @@ const PublicacionesList = () => {
   };
 
   const matchesStatus = (pub: Publicacion) => {
-    const estado = (pub.estado || '').toUpperCase();
+    const estado = (pub.estado || '').toUpperCase().replace(/[\s_]/g, '');
     if (filter === 'TODAS') return true;
     if (filter === 'ACTIVAS') return estado === 'ACTIVO';
-    if (filter === 'REVISION') return estado === 'EN REVISION' || estado === 'EN_REVISION' || estado.includes('REVISION');
-    if (filter === 'ELIMINADAS') return estado.includes('ELIMIN') || estado === 'ELIMINADO' || estado === 'ELIMINADA';
+    if (filter === 'REVISION') return estado.includes('REVISION');
+    if (filter === 'ELIMINADAS') return estado.includes('ELIMIN') || estado === 'BAJA';
     return true;
   };
 
-  const filteredPublicaciones = publicaciones.filter((pub) =>
-    matchesStatus(pub) && (
-      pub.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pub.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredPublicaciones = publicaciones.filter((pub) => {
+    const titulo = pub.titulo?.toLowerCase() || '';
+    const descripcion = pub.descripcion?.toLowerCase() || '';
+    const search = searchTerm.toLowerCase();
+    return matchesStatus(pub) && (titulo.includes(search) || descripcion.includes(search));
+  });
 
-  const handleViewDetails = (id: string) => {
-    navigate(`/publicaciones/${id}`);
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Seguro que deseas eliminar esta publicación?')) return;
+    try {
+      await publicacionesService.cambiarEstado(id, 'ELIMINADA');
+      await loadPublicaciones();
+    } catch (error) {
+      console.error('Error al eliminar:', error);
+      alert('Error al eliminar la publicación');
+    }
   };
 
-  const handleCreateNew = () => {
-    navigate('/publicaciones/crear');
+  const handleRestore = async (id: string) => {
+    if (!window.confirm('¿Restaurar esta publicación?')) return;
+    try {
+      await publicacionesService.cambiarEstado(id, 'ACTIVO');
+      await loadPublicaciones();
+    } catch (error) {
+      console.error('Error al restaurar:', error);
+      alert('Error al restaurar la publicación');
+    }
   };
+
+  const handleCreateNew = () => navigate('/publicaciones/crear');
+
+  const formatPrice = (price?: number) =>
+    price
+      ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(price)
+      : '—';
 
   return (
     <Box sx={{ p: 3, backgroundColor: '#F3FAF3', minHeight: '100vh' }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ textAlign: 'center', mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2E7D32' }}>
           Mis Publicaciones
         </Typography>
       </Box>
 
-      {/* Search Bar */}
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      {/* Filtros */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {['TODAS', 'ACTIVAS', 'REVISION', 'ELIMINADAS'].map((estado) => (
           <Button
-            size="small"
-            variant={filter === 'TODAS' ? 'contained' : 'outlined'}
-            onClick={() => setFilter('TODAS')}
-            sx={{ textTransform: 'none' }}
+            key={estado}
+            variant={filter === estado ? 'contained' : 'outlined'}
+            onClick={() => setFilter(estado as any)}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
           >
-            Todas
+            {estado === 'TODAS'
+              ? 'Todas'
+              : estado === 'ACTIVAS'
+              ? 'Activas'
+              : estado === 'REVISION'
+              ? 'En revisión'
+              : 'Eliminadas'}
           </Button>
-          <Button
-            size="small"
-            variant={filter === 'ACTIVAS' ? 'contained' : 'outlined'}
-            onClick={() => setFilter('ACTIVAS')}
-            sx={{ textTransform: 'none' }}
-          >
-            Activas
-          </Button>
-          <Button
-            size="small"
-            variant={filter === 'REVISION' ? 'contained' : 'outlined'}
-            onClick={() => setFilter('REVISION')}
-            sx={{ textTransform: 'none' }}
-          >
-            En revisión
-          </Button>
-          <Button
-            size="small"
-            variant={filter === 'ELIMINADAS' ? 'contained' : 'outlined'}
-            onClick={() => setFilter('ELIMINADAS')}
-            sx={{ textTransform: 'none' }}
-          >
-            Eliminadas
-          </Button>
-        </Box>
+        ))}
+      </Box>
 
-        <TextField
+      {/* Buscador */}
+      <TextField
         fullWidth
         placeholder="Buscar publicaciones..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ mb: 3 }}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -134,116 +142,174 @@ const PublicacionesList = () => {
             </InputAdornment>
           ),
         }}
+        sx={{
+          mb: 4,
+          backgroundColor: 'white',
+          borderRadius: 2,
+          '& .MuiOutlinedInput-root': {
+            '& fieldset': { borderColor: '#E0E0E0' },
+            '&:hover fieldset': { borderColor: '#4CAF50' },
+            '&.Mui-focused fieldset': { borderColor: '#4CAF50' },
+          },
+        }}
       />
-      </Box>
 
-      {/* Grid de Publicaciones */}
+      {/* Publicaciones */}
       {loading ? (
-        <Typography>Cargando...</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
+          <CircularProgress color="success" />
+        </Box>
       ) : (
-        <Grid container spacing={3}>
-          {filteredPublicaciones.map((publicacion) => (
-            <Grid item xs={12} sm={6} md={4} key={publicacion.id}>
-              <Card
-                sx={{
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 6,
-                  },
-                  borderRadius: 2,
-                }}
-                onClick={() => handleViewDetails(publicacion.id!)}
-              >
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={publicacion.multimedia?.[0]?.url || 'https://via.placeholder.com/300x200?text=Sin+Imagen'}
-                  alt={publicacion.titulo}
-                  sx={{ objectFit: 'cover' }}
-                />
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-                      {publicacion.titulo}
-                    </Typography>
-                    <Chip
-                      label={publicacion.estado}
-                      size="small"
-                      sx={{
-                        backgroundColor: ESTADO_COLORS[publicacion.estado || 'EN REVISION'],
-                        color: 'white',
-                        fontWeight: 'bold',
-                      }}
-                    />
-                  </Box>
-                  
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
+        <>
+          <Grid container spacing={3}>
+            {filteredPublicaciones.map((pub) => {
+              const isEliminada = (pub.estado || '').toUpperCase().includes('ELIMIN');
+              return (
+                <Grid item xs={12} sm={6} md={4} key={pub.id}>
+                  <Card
+                    onClick={() => navigate(`/publicaciones/${pub.id}`)}
                     sx={{
-                      mb: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
+                      height: 550, // 🔹 más alargada
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderRadius: 3,
+                      boxShadow: 3,
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
                     }}
                   >
-                    {publicacion.descripcion}
-                  </Typography>
+                    {/* Imagen */}
+                    <Box sx={{ width: '100%', height: 260, overflow: 'hidden' }}>
+                      <CardMedia
+                        component="img"
+                        image={pub.multimedia?.[0]?.url || '/placeholder.jpg'}
+                        alt={pub.titulo}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'center',
+                          filter: isEliminada ? 'grayscale(100%)' : 'none',
+                        }}
+                      />
+                    </Box>
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Chip
-                      label={publicacion.categoria?.nombre}
-                      size="small"
-                      variant="outlined"
-                      sx={{ color: '#4CAF50', borderColor: '#4CAF50' }}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {publicacion.multimedia?.length || 0} fotos
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
+                    {/* Contenido */}
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2E7D32', mb: 1 }}>
+                        {pub.titulo}
+                      </Typography>
 
-      {filteredPublicaciones.length === 0 && !loading && (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="text.secondary">
-            No se encontraron publicaciones
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateNew}
-            sx={{
-              mt: 2,
-              backgroundColor: '#4CAF50',
-              borderRadius: '25px',
-              textTransform: 'none',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              padding: '12px 32px',
-              boxShadow: '0 4px 10px rgba(76, 175, 80, 0.3)',
-              transition: 'all 0.3s ease',
-              '&:hover': { 
-                backgroundColor: '#45A049',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 12px rgba(76, 175, 80, 0.4)'
-              }
-            }}
-          >
-            Crear Publicación
-          </Button>
-        </Box>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          mb: 2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                        }}
+                      >
+                        {pub.descripcion}
+                      </Typography>
+
+                      {/* 🔹 Precio visible */}
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: '#1B5E20',
+                          fontWeight: 'bold',
+                          mb: 2,
+                        }}
+                      >
+                        {pub.precio
+                          ? new Intl.NumberFormat('es-CL', {
+                              style: 'currency',
+                              currency: 'CLP',
+                            }).format(pub.precio)
+                          : 'Sin precio'}
+                      </Typography>
+
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Chip
+                          label={pub.categoria?.nombre || 'Sin categoría'}
+                          size="small"
+                          sx={{ bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 600 }}
+                        />
+                        <Chip
+                          label={(pub.estado ?? 'EN REVISION').replace(/_/g, ' ')}
+                          size="small"
+                          sx={{
+                            bgcolor: ESTADO_COLORS[(pub.estado ?? 'EN REVISION').toUpperCase()],
+                            color: 'white',
+                            fontWeight: 600,
+                          }}
+                        />
+                      </Box>
+
+                      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                        {!isEliminada ? (
+                          <IconButton
+                            color="error"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(pub.id!);
+                            }}
+                            sx={{
+                              backgroundColor: '#FEECEC',
+                              '&:hover': { backgroundColor: '#FFCDD2' },
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        ) : (
+                          <IconButton
+                            color="success"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRestore(pub.id!);
+                            }}
+                            sx={{
+                              backgroundColor: '#E8F5E9',
+                              '&:hover': { backgroundColor: '#C8E6C9' },
+                            }}
+                          >
+                            <RestoreIcon />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+
+          <Box sx={{ textAlign: 'center', mt: 5 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateNew}
+              sx={{
+                backgroundColor: '#4CAF50',
+                borderRadius: '25px',
+                textTransform: 'none',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                padding: '12px 36px',
+                '&:hover': { backgroundColor: '#45A049' },
+              }}
+            >
+              Crear Publicación
+            </Button>
+          </Box>
+        </>
       )}
     </Box>
   );
-};
-
-export default PublicacionesList;
+}

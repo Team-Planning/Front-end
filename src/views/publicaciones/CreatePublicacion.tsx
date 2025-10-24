@@ -203,6 +203,7 @@ const CreatePublicacion = () => {
         titulo: formData.titulo,
         descripcion: formData.descripcion,
         categoriaId: formData.categoriaId,
+        precio: Number(formData.precio), // ✅ enviar el precio real
         multimedia,
       };
 
@@ -218,16 +219,19 @@ const CreatePublicacion = () => {
       setTimeout(() => {
         navigate(`/publicaciones/${publicacion.id}`);
       }, 1500);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error al crear publicación:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Error al crear la publicación';
-      setSnackbar({ 
-        open: true, 
-        message: errorMessage, 
-        severity: 'error' 
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Ocurrió un error inesperado al crear la publicación.';
+
+      setSnackbar({
+        open: true,
+        message: `⚠️ ${errorMessage}`,
+        severity: 'error',
       });
+
     } finally {
       setLoading(false);
       setUploadingImages(false);
@@ -465,17 +469,18 @@ const CreatePublicacion = () => {
             </Typography>
             <TextField
               fullWidth
+              type="number" // ✅ Solo acepta números
               placeholder="(Campo Obligatorio)"
               value={formData.precio}
-              onChange={(e) => handleInputChange('precio', e.target.value)}
+              onChange={(e) => handleInputChange('precio', e.target.value.replace(/\D/g, ''))} // elimina letras
               error={!!errors.precio}
               helperText={errors.precio}
               InputProps={{
                 startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-                endAdornment: formData.precio && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
             />
           </Box>
+
 
           {/* Botón Subir */}
           <Button

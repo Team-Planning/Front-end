@@ -21,6 +21,7 @@ export interface Publicacion {
   id_producto?: string;
   titulo: string;
   descripcion: string;
+  precio?: number;
   categoriaId: string;
   categoria?: Categoria;
   estado?: string;
@@ -35,6 +36,7 @@ export interface CreatePublicacionDto {
   id_producto?: string;
   titulo: string;
   descripcion: string;
+  precio?: number;
   categoriaId: string;
   estado?: string;
   multimedia?: Multimedia[];
@@ -45,56 +47,76 @@ export interface UpdatePublicacionDto {
   id_producto?: string;
   titulo?: string;
   descripcion?: string;
+  precio?: number;
   categoriaId?: string;
   estado?: string;
 }
 
+type GetAllOpts = {
+  includeEliminadas?: boolean;
+};
+
 class PublicacionesService {
-  // Obtener todas las publicaciones
-  async getAll(): Promise<Publicacion[]> {
-    const response = await api.get('/publicaciones');
-    return response.data;
+  private notifyListChanged() {
+    localStorage.setItem('publicaciones-update', Date.now().toString());
   }
 
-  // Obtener publicación por ID
+  // ✅ Obtener TODAS, incluidas las eliminadas o en revisión
+  async getAll(opts?: GetAllOpts): Promise<Publicacion[]> {
+    const response = await api.get('/publicaciones');
+    let data: Publicacion[] = response.data;
+
+    if (opts?.includeEliminadas) return data;
+    return data.filter(
+      (p) => !(p.estado ?? '').toUpperCase().includes('ELIMIN')
+    );
+  }
+
   async getById(id: string): Promise<Publicacion> {
     const response = await api.get(`/publicaciones/${id}`);
     return response.data;
   }
 
-  // Crear publicación
   async create(data: CreatePublicacionDto): Promise<Publicacion> {
-    const response = await api.post('/publicaciones', data);
+    const payload = { ...data, estado: data.estado ?? 'EN REVISION' };
+    const response = await api.post('/publicaciones', payload);
+    this.notifyListChanged();
     return response.data;
   }
 
-  // Actualizar publicación
   async update(id: string, data: UpdatePublicacionDto): Promise<Publicacion> {
     const response = await api.put(`/publicaciones/${id}`, data);
+    this.notifyListChanged();
     return response.data;
   }
 
-  // Eliminar publicación
   async delete(id: string): Promise<void> {
     await api.delete(`/publicaciones/${id}`);
+    this.notifyListChanged();
   }
 
-  // Cambiar estado
   async changeStatus(id: string, estado: string): Promise<Publicacion> {
     const response = await api.patch(`/publicaciones/${id}/estado`, { estado });
+    this.notifyListChanged();
     return response.data;
   }
 
-  // Agregar multimedia
   async addMultimedia(id: string, multimedia: Multimedia): Promise<any> {
     const response = await api.post(`/publicaciones/${id}/multimedia`, multimedia);
     return response.data;
   }
 
-  // Eliminar multimedia
   async deleteMultimedia(multimediaId: string): Promise<void> {
     await api.delete(`/publicaciones/multimedia/${multimediaId}`);
   }
+  // ✅ Cambiar estado (eliminado / activo / revisión)
+  async cambiarEstado(id: string, estado: string): Promise<Publicacion> {
+    const response = await api.patch(`/publicaciones/${id}/estado`, { estado });
+    this.notifyListChanged();
+    return response.data;
+  }
+
+
 }
 
 export default new PublicacionesService();
