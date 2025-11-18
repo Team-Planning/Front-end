@@ -246,6 +246,19 @@ const EditPublicacion = () => {
       };
 
       await publicacionesService.update(id!, dto);
+      // Actualizar localStorage con mock de precio y categoría para que la lista y detalle reflejen cambios
+      try {
+        const key = 'publicacion_extras';
+        const raw = localStorage.getItem(key);
+        const map = raw ? JSON.parse(raw) : {};
+        map[String(id)] = {
+          precio: Number(formData.precio),
+          categoriaMock: formData.categoriaMock,
+        };
+        localStorage.setItem(key, JSON.stringify(map));
+      } catch (e) {
+        console.warn('No se pudo guardar publicacion_extras en localStorage', e);
+      }
       
       setSnackbar({ open: true, message: 'Publicación actualizada exitosamente', severity: 'success' });
       
@@ -277,10 +290,10 @@ const EditPublicacion = () => {
   }
 
   return (
-    <Box sx={{ backgroundColor: '#F3FAF3', minHeight: '100vh', pb: 3 }}>
-      {/* Header con fondo verde */}
-      <Box sx={{ backgroundColor: '#4CAF50', color: 'white', p: 2, display: 'flex', alignItems: 'center' }}>
-        <IconButton onClick={() => navigate(`/publicaciones/${id}`)} sx={{ color: 'white', mr: 2 }}>
+    <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
+      {/* Header con fondo theme - full-bleed (compensa padding del layout) */}
+      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
+        <IconButton onClick={() => navigate(`/publicaciones/${id}`)} sx={{ color: 'primary.contrastText', mr: 2 }}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -321,13 +334,13 @@ const EditPublicacion = () => {
             variant="outlined"
             size="small"
             disabled={saving}
-            sx={{
-              borderColor: '#4CAF50',
-              color: '#4CAF50',
-              borderRadius: '20px',
-              textTransform: 'none',
-              '&:hover': { borderColor: '#45A049', backgroundColor: '#F1F8E9' },
-            }}
+              sx={{
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                borderRadius: '20px',
+                textTransform: 'none',
+                '&:hover': { borderColor: 'primary.dark', backgroundColor: '#F1F8E9' },
+              }}
           >
             Definir como portada
           </Button>
@@ -341,6 +354,7 @@ const EditPublicacion = () => {
                 <img
                   src={multimedia[currentImageIndex].url}
                   alt={`Imagen ${currentImageIndex + 1}`}
+                  loading="lazy"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -381,7 +395,8 @@ const EditPublicacion = () => {
                   width: 70,
                   height: 70,
                   flexShrink: 0,
-                  border: currentImageIndex === index ? '3px solid #4CAF50' : '2px solid #E0E0E0',
+                  border: currentImageIndex === index ? '3px solid' : '2px solid #E0E0E0',
+                  borderColor: currentImageIndex === index ? 'primary.main' : 'transparent',
                   borderRadius: 1,
                   overflow: 'hidden',
                   cursor: 'pointer',
@@ -390,6 +405,7 @@ const EditPublicacion = () => {
                 <img
                   src={img.url}
                   alt={`Thumbnail ${index + 1}`}
+                  loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </Box>
@@ -403,7 +419,8 @@ const EditPublicacion = () => {
                   width: 70,
                   height: 70,
                   flexShrink: 0,
-                  border: '2px dashed #4CAF50',
+                  border: '2px dashed',
+                  borderColor: 'primary.main',
                   borderRadius: 1,
                   display: 'flex',
                   alignItems: 'center',
@@ -413,7 +430,7 @@ const EditPublicacion = () => {
                   '&:hover': { backgroundColor: '#E8F5E9' },
                 }}
               >
-                {saving ? <CircularProgress size={24} /> : <AddPhotoIcon sx={{ color: '#4CAF50' }} />}
+                {saving ? <CircularProgress size={24} /> : <AddPhotoIcon sx={{ color: 'primary.main' }} />}
               </Box>
             )}
           </Box>
@@ -442,7 +459,7 @@ const EditPublicacion = () => {
               helperText={errors.titulo || `${formData.titulo.length}/80 caracteres`}
               inputProps={{ maxLength: 80 }}
               InputProps={{
-                endAdornment: formData.titulo.length >= 5 && <CheckIcon sx={{ color: '#4CAF50' }} />,
+                endAdornment: formData.titulo.length >= 5 && <CheckIcon sx={{ color: 'primary.main' }} />,
               }}
             />
           </Box>
@@ -463,7 +480,7 @@ const EditPublicacion = () => {
               helperText={errors.descripcion || `${formData.descripcion.length}/500 caracteres`}
               inputProps={{ maxLength: 500 }}
               InputProps={{
-                endAdornment: formData.descripcion.length >= 10 && <CheckIcon sx={{ color: '#4CAF50' }} />,
+                endAdornment: formData.descripcion.length >= 10 && <CheckIcon sx={{ color: 'primary.main' }} />,
               }}
             />
           </Box>
@@ -509,7 +526,7 @@ const EditPublicacion = () => {
               helperText={errors.precio}
               InputProps={{
                 startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-                endAdornment: formData.precio && <CheckIcon sx={{ color: '#4CAF50' }} />,
+                endAdornment: formData.precio && <CheckIcon sx={{ color: 'primary.main' }} />,
               }}
             />
           </Box>
@@ -528,8 +545,8 @@ const EditPublicacion = () => {
               onClick={handleAddImageClick} // <-- CAMBIADO
               disabled={saving || multimedia.length >= 6}
               sx={{
-                borderColor: '#4CAF50',
-                color: '#4CAF50',
+                borderColor: 'primary.main',
+                color: 'primary.main',
                 borderRadius: '20px',
                 textTransform: 'none',
               }}
@@ -541,8 +558,8 @@ const EditPublicacion = () => {
               size="small"
               disabled={saving}
               sx={{
-                borderColor: '#4CAF50',
-                color: '#4CAF50',
+                borderColor: 'primary.main',
+                color: 'primary.main',
                 borderRadius: '20px',
                 textTransform: 'none',
               }}
@@ -561,9 +578,9 @@ const EditPublicacion = () => {
               // ==================================================================
               // 🎨 ARREGLO VISUAL: BOTÓN LEGIBLE
               // ==================================================================
-              backgroundColor: '#4CAF50', // Fondo verde
-              color: 'white', // Texto blanco
-              '&:hover': { backgroundColor: '#45A049' },
+              backgroundColor: 'primary.main',
+              color: 'primary.contrastText',
+              '&:hover': { backgroundColor: 'primary.dark' },
               '&:disabled': { 
                 backgroundColor: '#BDBDBD',
                 color: '#757575' 
@@ -588,11 +605,11 @@ const EditPublicacion = () => {
             Los cambios se guardarán permanentemente.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
+          <DialogActions>
           <Button onClick={() => setSaveDialogOpen(false)} sx={{ color: '#757575' }}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} sx={{ color: '#4CAF50', fontWeight: 'bold' }}>
+          <Button onClick={handleSave} sx={{ color: 'primary.main', fontWeight: 'bold' }}>
             Confirmar
           </Button>
         </DialogActions>

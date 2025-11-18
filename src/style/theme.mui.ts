@@ -20,10 +20,10 @@ const theme = createTheme({
   palette: {
     // Cambiando la paleta principal
     primary: {
-      main: "#002E38", // color "base"
-      light: "#003c58", // una versión más clara
-      dark: "#0d1d1e", // una versión más oscura
-      contrastText: "#ffffff", // color de texto que contraste con main
+      main: "#386641", // color base: verde oscuro solicitado
+      light: "#5a8a6a", // versión más clara
+      dark: "#274d36", // versión más oscura
+      contrastText: "#ffffff",
     },
     // Cambiando la paleta secundaria
     secondary: {
@@ -47,7 +47,7 @@ const theme = createTheme({
   },
   typography: {
     // Cambiando la fuente
-    fontFamily: "Popins, sans-serif",
+    fontFamily: "Poppins, sans-serif",
     // Cambiando la fuente del botón
     button: {
       fontFamily: "Poppins, sans-serif",

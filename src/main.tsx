@@ -11,18 +11,15 @@ import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
 
-// 2. Importamos el tema de pulga-shop-ui
-import { getPulgaTheme } from "pulga-shop-ui";
-
-// 3. Ya no importamos tu tema local
-// import theme from "./style/theme.mui.ts"; 
+// 2. Importamos el tema local
+import theme from "./style/theme.mui";
 
 // --- FIN DE LA COMBINACIÓN ---
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {/* 4. Usamos el ThemeProvider con getPulgaTheme() */}
-    <ThemeProvider theme={getPulgaTheme()}>
+    {/* 4. Usamos el ThemeProvider con el tema local */}
+    <ThemeProvider theme={theme}>
       {/* 5. Añadimos CssBaseline aquí, dentro del provider */}
       <CssBaseline />
       

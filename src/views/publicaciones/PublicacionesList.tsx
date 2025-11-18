@@ -11,8 +11,8 @@ import {
   Chip,
   TextField,
   InputAdornment,
-  CircularProgress,
   IconButton,
+  Skeleton,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -21,6 +21,20 @@ import {
   RestoreFromTrash as RestoreIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
+
+// MOCK DE CATEGORÍAS (Solo Frontend) - reutilizado para mostrar nombre desde key
+const mockCategorias = [
+  { id: 'tec', nombre: 'Tecnología' },
+  { id: 'rop', nombre: 'Ropa y Accesorios' },
+  { id: 'hog', nombre: 'Hogar y Muebles' },
+  { id: 'lib', nombre: 'Libros y Apuntes' },
+  { id: 'otr', nombre: 'Otros' },
+];
+
+const getCategoriaNombre = (id: string) => {
+  const cat = mockCategorias.find((c) => c.id === id);
+  return cat ? cat.nombre : 'Sin categoría';
+};
 
 const ESTADO_COLORS: Record<string, string> = {
   'EN REVISION': '#FFA726',
@@ -43,6 +57,10 @@ export default function PublicacionesList() {
   useEffect(() => {
     loadPublicaciones();
   }, []);
+
+  // leer mapa local de extras (precio y categoria) una vez al render
+  const extrasRaw = typeof window !== 'undefined' ? localStorage.getItem('publicacion_extras') : null;
+  const extrasMap: Record<string, any> = extrasRaw ? JSON.parse(extrasRaw) : {};
 
   const loadPublicaciones = async () => {
     try {
@@ -96,13 +114,10 @@ export default function PublicacionesList() {
 
   const handleCreateNew = () => navigate('/publicaciones/crear');
 
-  const formatPrice = (price?: number) =>
-    price
-      ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(price)
-      : '—';
+  
 
   return (
-    <Box sx={{ p: 3, backgroundColor: '#F3FAF3', minHeight: '100vh' }}>
+    <Box sx={{ p: 3, backgroundColor: '#ffffff', minHeight: '100vh' }}>
       <Box sx={{ textAlign: 'center', mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2E7D32' }}>
           Mis Publicaciones
@@ -148,17 +163,28 @@ export default function PublicacionesList() {
           borderRadius: 2,
           '& .MuiOutlinedInput-root': {
             '& fieldset': { borderColor: '#E0E0E0' },
-            '&:hover fieldset': { borderColor: '#4CAF50' },
-            '&.Mui-focused fieldset': { borderColor: '#4CAF50' },
+            '&:hover fieldset': { borderColor: 'primary.main' },
+            '&.Mui-focused fieldset': { borderColor: 'primary.main' },
           },
         }}
       />
 
       {/* Publicaciones */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
-          <CircularProgress color="success" />
-        </Box>
+        <Grid container spacing={3}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Grid item xs={12} sm={6} md={4} key={`skeleton-${i}`}>
+              <Card sx={{ height: 550, borderRadius: 3 }}>
+                <Skeleton variant="rectangular" height={260} />
+                <CardContent>
+                  <Skeleton width="60%" height={30} />
+                  <Skeleton width="90%" height={16} sx={{ my: 1 }} />
+                  <Skeleton width="40%" height={24} />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       ) : (
         <>
           <Grid container spacing={3}>
@@ -186,6 +212,7 @@ export default function PublicacionesList() {
                         component="img"
                         image={pub.multimedia?.[0]?.url || '/placeholder.jpg'}
                         alt={pub.titulo}
+                        loading="lazy"
                         sx={{
                           width: '100%',
                           height: '100%',
@@ -198,7 +225,7 @@ export default function PublicacionesList() {
 
                     {/* Contenido */}
                     <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2E7D32', mb: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1 }}>
                         {pub.titulo}
                       </Typography>
 
@@ -226,20 +253,33 @@ export default function PublicacionesList() {
                           mb: 2,
                         }}
                       >
-                        {pub.precio
-                          ? new Intl.NumberFormat('es-CL', {
-                              style: 'currency',
-                              currency: 'CLP',
-                            }).format(pub.precio)
-                          : 'Sin precio'}
+                        {
+                          (() => {
+                            const local = extrasMap[String(pub.id)];
+                            const rawPrice = local?.precio ?? pub.precio;
+                            if (rawPrice !== null && rawPrice !== undefined && rawPrice !== '') {
+                              const num = Number(rawPrice);
+                              if (!Number.isNaN(num)) {
+                                return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(num);
+                              }
+                            }
+                            return 'Sin precio';
+                          })()
+                        }
                       </Typography>
 
 
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Chip
-                          label={pub.categoria?.nombre || 'Sin categoría'}
+                          label={
+                            (() => {
+                              const local = extrasMap[String(pub.id)];
+                              if (local && local.categoriaMock) return getCategoriaNombre(local.categoriaMock);
+                              return pub.categoria?.nombre || 'Sin categoría';
+                            })()
+                          }
                           size="small"
-                          sx={{ bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 600 }}
+                          sx={{ bgcolor: '#E8F5E9', color: 'primary.main', fontWeight: 600 }}
                         />
                         <Chip
                           label={(pub.estado ?? 'EN REVISION').replace(/_/g, ' ')}
@@ -296,13 +336,13 @@ export default function PublicacionesList() {
               startIcon={<AddIcon />}
               onClick={handleCreateNew}
               sx={{
-                backgroundColor: '#4CAF50',
+                backgroundColor: 'primary.main',
                 borderRadius: '25px',
                 textTransform: 'none',
                 fontSize: '16px',
                 fontWeight: 'bold',
                 padding: '12px 36px',
-                '&:hover': { backgroundColor: '#45A049' },
+                '&:hover': { backgroundColor: 'primary.dark' },
               }}
             >
               Crear Publicación

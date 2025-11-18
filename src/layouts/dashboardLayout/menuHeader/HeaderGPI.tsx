@@ -3,10 +3,11 @@
  */
 
 import { Avatar, Box, Typography } from "@mui/material";
-import logo from "../../../assets/EII_logo.png";
+import logo from "../../../assets/pulgaShop_logo.png";
 import DrawerNav from "./DrawerNav";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from '@mui/material/styles';
 
 
 interface HeaderGPIProps {
@@ -26,6 +27,7 @@ interface HeaderGPIProps {
  * */
 
 function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
+  const theme = useTheme();
   const actionsMenu = [
     {
       name: "Inicio",
@@ -91,18 +93,19 @@ function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
           <div className="h-16 w-full bg-white shadow-md">
             <div className="flex w-full h-full items-center justify-between p-4 py-0">
               
-              {/* Nuevo: Logo/Título a la izquierda */}
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 'bold',
-                  color: '#4CAF50', // Color verde para el título
-                  cursor: 'pointer'
-                }}
-                onClick={() => redirectTo('/home')}
-              >
-                PULGASHOP
-              </Typography>
+              {/* Nuevo: Logo + Título a la izquierda */}
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => redirectTo('/home')}>
+                <img src={logo} alt="logo" className="h-8 w-8" />
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 'bold',
+                    color: theme.palette.primary.main, // usar color del theme
+                  }}
+                >
+                  PULGASHOP
+                </Typography>
+              </div>
 
               {/* Contenedor del ícono de hamburguesa */}
               <div
@@ -133,7 +136,7 @@ function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
           ></DrawerNav>
         </nav>
       ) : (
-        <nav className="flex flex-col bg-(--color-darkgreen) w-80 h-full overflow-auto">
+        <nav className="flex flex-col w-80 h-full overflow-auto" style={{ backgroundColor: theme.palette.primary.main }}>
           <div className="flex flex-col justify-between p-4 h-full">
             <div className="flex flex-col items-center pt-10 justify-center gap-2">
               <Box
@@ -141,13 +144,13 @@ function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
                 gap="16px"
                 className="flex flex-col justify-center items-center"
               >
-                <img alt="logo" className="h-30 invert" src={logo} />
+                <img alt="logo" className="h-30" src={logo} />
                 <Typography
                   fontSize={22}
                   lineHeight={"32px"}
                   letterSpacing={"-0.3px"}
                   fontWeight={600}
-                  color="#ebebeb"
+                  color={theme.palette.primary.contrastText}
                 >
                   GPI project
                 </Typography>

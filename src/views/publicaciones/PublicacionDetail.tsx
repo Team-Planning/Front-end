@@ -14,7 +14,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  LinearProgress, // <-- AÑADIDO
+  Skeleton,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -25,6 +25,8 @@ import {
   MoreVert as MoreVertIcon,
   ChevronLeft as ChevronLeftIcon, // <-- AÑADIDO para galería
   ChevronRight as ChevronRightIcon, // <-- AÑADIDO para galería
+  Visibility as VisibilityIcon,
+  PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
 
@@ -85,6 +87,7 @@ const PublicacionDetail = () => {
     try {
       setLoading(true);
       const data = await publicacionesService.getById(id!);
+    console.log('Publicacion fetched:', data);
       setPublicacion(data);
       // Asegurarse de que el índice no exceda el número de imágenes si hay cambios
       if (data.multimedia && currentImageIndex >= data.multimedia.length) {
@@ -155,9 +158,13 @@ const PublicacionDetail = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column' }}>
-        <LinearProgress sx={{ width: '100%' }} />
-        <Typography>Cargando...</Typography>
+      <Box sx={{ px: 3, py: 4 }}>
+        <Skeleton variant="rectangular" height={350} />
+        <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
+          <Skeleton width="40%" height={36} sx={{ mt: 2 }} />
+          <Skeleton width="80%" height={16} sx={{ mt: 1 }} />
+          <Skeleton width="100%" height={120} sx={{ mt: 2 }} />
+        </Box>
       </Box>
     );
   }
@@ -173,16 +180,21 @@ const PublicacionDetail = () => {
   const multimedia = publicacion.multimedia || [];
   const hasMultipleImages = multimedia.length > 1;
 
+  // Leer valores mock guardados localmente (precio, categoria) si existen
+  const extrasRaw = typeof window !== 'undefined' ? localStorage.getItem('publicacion_extras') : null;
+  const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
+  const localExtra = extrasMap[String(publicacion.id)] || null;
+
   return (
-    <Box sx={{ backgroundColor: '#F3FAF3', minHeight: '100vh', pb: 3 }}>
-      {/* Header con fondo verde */}
-      <Box sx={{ backgroundColor: '#4CAF50', color: 'white', p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
+      {/* Header con fondo theme - full-bleed (compensa padding del layout) */}
+      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <IconButton onClick={() => navigate('/publicaciones')} sx={{ color: 'white', mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            {ESTADO_TEXT[publicacion.estado || 'EN REVISION']}
+            Detalle de publicación
           </Typography>
         </Box>
         <IconButton sx={{ color: 'white' }}>
@@ -278,7 +290,7 @@ const PublicacionDetail = () => {
                       width: 8,
                       height: 8,
                       borderRadius: '50%',
-                      backgroundColor: currentImageIndex === index ? '#4CAF50' : '#E0E0E0',
+                      backgroundColor: currentImageIndex === index ? 'primary.main' : '#E0E0E0',
                       cursor: 'pointer',
                     }}
                   />
@@ -294,22 +306,23 @@ const PublicacionDetail = () => {
         {/* Información de la publicación */}
         <Card sx={{ p: 2, mb: 2, borderRadius: 2 }}>
           {/* Acciones rápidas (Mocks) */}
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <FavoriteIcon sx={{ color: '#EF5350', fontSize: 20 }} />
-              <Typography variant="caption">"5 vistas"</Typography>
+              <VisibilityIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+              <Typography variant="caption">5 vistas</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <FavoriteIcon sx={{ color: '#EF5350', fontSize: 20 }} />
-              <Typography variant="caption">"3 me gusta"</Typography>
+              <Typography variant="caption">3 me gusta</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="caption">"1 interesados"</Typography>
+              <PersonAddIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+              <Typography variant="caption">1 interesados</Typography>
             </Box>
           </Box>
 
           {/* Título */}
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#2E7D32' }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
             {publicacion.titulo}
           </Typography>
 
@@ -334,21 +347,27 @@ const PublicacionDetail = () => {
               CATEGORÍA:
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {/* Como el backend no guarda la categoría, mostramos una por defecto */}
-              {getCategoriaNombre('rop')} 
+              {/* Si hay un mock local para categoría, usarlo; si no, mostrar por defecto */}
+              {getCategoriaNombre(localExtra?.categoriaMock ?? 'rop')} 
             </Typography>
           </Box>
 
           {/* ================================================================== */}
           {/* 🎨 ARREGLO: Mostrar precio (manejando el 0)                      */}
           {/* ================================================================== */}
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4CAF50', mb: 2 }}>
-            {publicacion.precio !== null && publicacion.precio !== undefined
-              ? `PRECIO: ${new Intl.NumberFormat('es-CL', {
-                  style: 'currency',
-                  currency: 'CLP',
-                }).format(publicacion.precio)}`
-              : 'PRECIO: No disponible'}
+          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
+            {
+              (() => {
+                const rawPrice = (localExtra && localExtra.precio !== undefined) ? localExtra.precio : (publicacion as any).precio ?? (publicacion as any).price ?? (publicacion as any).valor ?? (publicacion as any).monto;
+                if (rawPrice !== null && rawPrice !== undefined && rawPrice !== '') {
+                  const num = Number(rawPrice);
+                  if (!Number.isNaN(num)) {
+                    return `PRECIO: ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(num)}`;
+                  }
+                }
+                return 'PRECIO: No disponible';
+              })()
+            }
           </Typography>
 
 
@@ -371,14 +390,14 @@ const PublicacionDetail = () => {
             startIcon={<EditIcon />}
             onClick={handleEdit}
             sx={{
-              borderColor: '#4CAF50',
-              color: '#4CAF50',
+              borderColor: 'primary.main',
+              color: 'primary.main',
               borderRadius: '25px',
               py: 1.5,
               fontWeight: 'bold',
               textTransform: 'none',
               '&:hover': {
-                borderColor: '#45A049',
+                borderColor: 'primary.dark',
                 backgroundColor: '#F1F8E9',
               },
             }}
