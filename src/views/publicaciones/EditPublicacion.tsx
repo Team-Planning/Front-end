@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // <-- AÑADIDO useRef
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -18,6 +18,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  InputLabel,
+  CircularProgress, // <-- AÑADIDO
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -26,14 +28,29 @@ import {
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion, UpdatePublicacionDto, Multimedia } from '../../services/publicaciones.service';
-import categoriasService, { Categoria } from '../../services/categorias.service';
+// import categoriasService, { Categoria } from '../../services/categorias.service'; // <-- ELIMINADO
+import uploadService from '../../services/upload.service'; // <-- AÑADIDO
+
+// ==================================================================
+//  MOCK DE CATEGORÍAS (Solo Frontend)
+// ==================================================================
+const mockCategorias = [
+  { id: 'tec', nombre: 'Tecnología' },
+  { id: 'rop', nombre: 'Ropa y Accesorios' },
+  { id: 'hog', nombre: 'Hogar y Muebles' },
+  { id: 'lib', nombre: 'Libros y Apuntes' },
+  { id: 'otr', nombre: 'Otros' },
+];
+// ==================================================================
+
 
 const EditPublicacion = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null); // <-- AÑADIDO
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  // const [categorias, setCategorias] = useState<Categoria[]>([]); // <-- ELIMINADO
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [multimedia, setMultimedia] = useState<Multimedia[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -43,32 +60,25 @@ const EditPublicacion = () => {
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
-    categoriaId: '',
+    categoriaMock: '', // <-- CAMBIADO
     precio: '',
   });
 
   const [errors, setErrors] = useState({
     titulo: '',
     descripcion: '',
-    categoriaId: '',
+    categoriaMock: '', // <-- CAMBIADO
     precio: '',
   });
 
   useEffect(() => {
-    loadCategorias();
+    // loadCategorias(); // <-- ELIMINADO
     if (id) {
       loadPublicacion();
     }
   }, [id]);
 
-  const loadCategorias = async () => {
-    try {
-      const data = await categoriasService.getActive();
-      setCategorias(data);
-    } catch (error) {
-      console.error('Error al cargar categorías:', error);
-    }
-  };
+  // const loadCategorias = async () => { ... }; // <-- ELIMINADA TODA LA FUNCIÓN
 
   const loadPublicacion = async () => {
     try {
@@ -78,8 +88,8 @@ const EditPublicacion = () => {
       setFormData({
         titulo: data.titulo,
         descripcion: data.descripcion,
-        categoriaId: data.categoriaId,
-        precio: '70000', // Temporal
+        categoriaMock: 'rop', // <-- CAMBIADO (ponemos un valor mock, ej: "Ropa y Accesorios")
+        precio: data.precio ? String(data.precio) : '0',
       });
       setMultimedia(data.multimedia || []);
     } catch (error) {
@@ -95,30 +105,67 @@ const EditPublicacion = () => {
     setErrors({ ...errors, [field]: '' });
   };
 
-  const handleAddImage = () => {
-    const url = prompt('Ingresa la URL de la imagen:');
-    if (url && publicacion) {
-      const newMultimedia: Multimedia = { url, orden: multimedia.length, tipo: 'imagen' };
+  // ==================================================================
+  // ✨ LÓGICA DE SUBIDA DE ARCHIVOS (COPIADA DE CREATE)
+  // ==================================================================
+  
+  // 1. Abre el explorador de archivos
+  const handleAddImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 2. Maneja los archivos seleccionados
+  const handleNewFilesSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !publicacion) return;
+
+    // Tomamos solo el primer archivo para simplificar
+    const file = files[0]; 
+    const validation = uploadService.validateImage(file);
+
+    if (!validation.valid) {
+      setSnackbar({ open: true, message: validation.error || 'Error de validación', severity: 'error' });
+      return;
+    }
+
+    if (multimedia.length >= 6) {
+      setSnackbar({ open: true, message: 'No puedes subir más de 6 imágenes', severity: 'error' });
+      return;
+    }
+
+    setSaving(true); // Muestra el spinner
+    try {
+      // 1. Subir a Cloudinary
+      const uploadedImage = await uploadService.uploadImage(file);
       
-      // Agregar al backend
-      publicacionesService.addMultimedia(publicacion.id!, newMultimedia)
-        .then(() => {
-          setMultimedia([...multimedia, newMultimedia]);
-          setSnackbar({ open: true, message: 'Imagen agregada correctamente', severity: 'success' });
-          loadPublicacion(); // Recargar para obtener el ID de la multimedia
-        })
-        .catch((error) => {
-          console.error('Error al agregar multimedia:', error);
-          setSnackbar({ open: true, message: 'Error al agregar la imagen', severity: 'error' });
-        });
+      // 2. Añadir al backend
+      await publicacionesService.addMultimedia(publicacion.id!, {
+        url: uploadedImage.url,
+        orden: multimedia.length,
+        tipo: 'imagen',
+      });
+
+      setSnackbar({ open: true, message: 'Imagen agregada exitosamente', severity: 'success' });
+      await loadPublicacion(); // Recarga la publicación para mostrar la nueva imagen
+
+    } catch (error) {
+      console.error("Error al subir imagen:", error);
+      setSnackbar({ open: true, message: 'Error al agregar la imagen', severity: 'error' });
+    } finally {
+      setSaving(false);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Limpia el input
     }
   };
+  // ==================================================================
+  // Fin de la lógica de subida
+  // ==================================================================
+
 
   const handleRemoveImage = (index: number) => {
     const multimediaToDelete = multimedia[index];
     
     if (multimediaToDelete.id) {
-      // Eliminar del backend
+      setSaving(true); // Muestra spinner
       publicacionesService.deleteMultimedia(multimediaToDelete.id)
         .then(() => {
           const newMultimedia = multimedia.filter((_, i) => i !== index);
@@ -127,6 +174,8 @@ const EditPublicacion = () => {
           
           if (currentImageIndex >= reordered.length && reordered.length > 0) {
             setCurrentImageIndex(reordered.length - 1);
+          } else if (newMultimedia.length === 0) {
+            setCurrentImageIndex(0);
           }
           
           setSnackbar({ open: true, message: 'Imagen eliminada correctamente', severity: 'success' });
@@ -134,6 +183,9 @@ const EditPublicacion = () => {
         .catch((error) => {
           console.error('Error al eliminar multimedia:', error);
           setSnackbar({ open: true, message: 'Error al eliminar la imagen', severity: 'error' });
+        })
+        .finally(() => {
+          setSaving(false); // Oculta spinner
         });
     }
   };
@@ -142,7 +194,7 @@ const EditPublicacion = () => {
     const newErrors = {
       titulo: '',
       descripcion: '',
-      categoriaId: '',
+      categoriaMock: '', // <-- CAMBIADO
       precio: '',
     };
 
@@ -158,8 +210,8 @@ const EditPublicacion = () => {
       isValid = false;
     }
 
-    if (!formData.categoriaId) {
-      newErrors.categoriaId = 'Debes seleccionar una categoría';
+    if (!formData.categoriaMock) { // <-- CAMBIADO
+      newErrors.categoriaMock = 'Debes seleccionar una categoría';
       isValid = false;
     }
 
@@ -185,10 +237,12 @@ const EditPublicacion = () => {
       setSaving(true);
       setSaveDialogOpen(false);
 
+      // Creamos el DTO solo con los campos que el backend espera
       const dto: UpdatePublicacionDto = {
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        categoriaId: formData.categoriaId,
+        precio: Number(formData.precio),
+        // No enviamos 'categoriaMock'
       };
 
       await publicacionesService.update(id!, dto);
@@ -234,14 +288,25 @@ const EditPublicacion = () => {
         </Typography>
       </Box>
 
-      {saving && <LinearProgress />}
+      {/* Input oculto para subir archivos */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleNewFilesSelected}
+      />
+
+      {(saving || loading) && <LinearProgress />}
 
       <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
         {/* Botones de acción superior */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             size="small"
+            onClick={() => handleRemoveImage(currentImageIndex)}
+            disabled={saving || multimedia.length === 0}
             sx={{
               borderColor: '#EF5350',
               color: '#EF5350',
@@ -255,6 +320,7 @@ const EditPublicacion = () => {
           <Button
             variant="outlined"
             size="small"
+            disabled={saving}
             sx={{
               borderColor: '#4CAF50',
               color: '#4CAF50',
@@ -264,19 +330,6 @@ const EditPublicacion = () => {
             }}
           >
             Definir como portada
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            sx={{
-              borderColor: '#4CAF50',
-              color: '#4CAF50',
-              borderRadius: '20px',
-              textTransform: 'none',
-              '&:hover': { borderColor: '#45A049', backgroundColor: '#F1F8E9' },
-            }}
-          >
-            Reordenar ↕
           </Button>
         </Box>
 
@@ -343,42 +396,46 @@ const EditPublicacion = () => {
             ))}
             
             {/* Botón agregar imagen */}
-            <Box
-              onClick={handleAddImage}
-              sx={{
-                width: 70,
-                height: 70,
-                flexShrink: 0,
-                border: '2px dashed #4CAF50',
-                borderRadius: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                backgroundColor: '#F5F5F5',
-                '&:hover': { backgroundColor: '#E8F5E9' },
-              }}
-            >
-              <AddPhotoIcon sx={{ color: '#4CAF50' }} />
-            </Box>
+            {multimedia.length < 6 && (
+              <Box
+                onClick={handleAddImageClick}
+                sx={{
+                  width: 70,
+                  height: 70,
+                  flexShrink: 0,
+                  border: '2px dashed #4CAF50',
+                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: '#F5F5F5',
+                  '&:hover': { backgroundColor: '#E8F5E9' },
+                }}
+              >
+                {saving ? <CircularProgress size={24} /> : <AddPhotoIcon sx={{ color: '#4CAF50' }} />}
+              </Box>
+            )}
           </Box>
 
           {/* Indicador */}
           <Box sx={{ textAlign: 'center', pb: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              {multimedia.length > 0 ? `${currentImageIndex + 1}/${multimedia.length}` : '0/6'}
+              {multimedia.length > 0 ? `${currentImageIndex + 1}/${multimedia.length}` : '0'}/6 fotos
             </Typography>
           </Box>
         </Card>
 
         {/* Formulario */}
         <Card sx={{ p: 2, borderRadius: 2 }}>
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO VISUAL: TÍTULO                                        */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              TÍTULO
-            </Typography>
             <TextField
+              variant="outlined"
               fullWidth
+              label="TÍTULO"
               value={formData.titulo}
               onChange={(e) => handleInputChange('titulo', e.target.value)}
               error={!!errors.titulo}
@@ -390,14 +447,16 @@ const EditPublicacion = () => {
             />
           </Box>
 
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO VISUAL: DESCRIPCIÓN                                   */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              DESCRIPCIÓN
-            </Typography>
             <TextField
+              variant="outlined"
               fullWidth
               multiline
               rows={4}
+              label="DESCRIPCIÓN"
               value={formData.descripcion}
               onChange={(e) => handleInputChange('descripcion', e.target.value)}
               error={!!errors.descripcion}
@@ -409,37 +468,43 @@ const EditPublicacion = () => {
             />
           </Box>
 
+          {/* ================================================================== */}
+          {/* ✨ MOCK DE CATEGORÍAS (Solo Frontend)                            */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              SELECCIONAR CATEGORÍA
-            </Typography>
-            <FormControl fullWidth error={!!errors.categoriaId}>
+            <FormControl fullWidth variant="outlined" error={!!errors.categoriaMock}>
+              <InputLabel id="categoria-mock-label">SELECCIONAR CATEGORÍA</InputLabel>
               <Select
-                value={formData.categoriaId}
-                onChange={(e) => handleInputChange('categoriaId', e.target.value)}
+                labelId="categoria-mock-label"
+                label="SELECCIONAR CATEGORÍA"
+                value={formData.categoriaMock}
+                onChange={(e) => handleInputChange('categoriaMock', e.target.value)}
               >
-                {categorias.map((cat) => (
+                {mockCategorias.map((cat) => (
                   <MenuItem key={cat.id} value={cat.id}>
                     {cat.nombre}
                   </MenuItem>
                 ))}
               </Select>
-              {errors.categoriaId && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                  {errors.categoriaId}
+              {errors.categoriaMock && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
+                  {errors.categoriaMock}
                 </Typography>
               )}
             </FormControl>
           </Box>
 
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO VISUAL: PRECIO                                        */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              PRECIO
-            </Typography>
             <TextField
+              variant="outlined"
               fullWidth
+              label="PRECIO"
+              type="number"
               value={formData.precio}
-              onChange={(e) => handleInputChange('precio', e.target.value)}
+              onChange={(e) => handleInputChange('precio', e.target.value.replace(/\D/g, ''))}
               error={!!errors.precio}
               helperText={errors.precio}
               InputProps={{
@@ -453,11 +518,15 @@ const EditPublicacion = () => {
             AGREGAR NUEVAS IMÁGENES
           </Typography>
 
+          {/* ================================================================== */}
+          {/* 🎨 BOTÓN DE AÑADIR IMAGEN                                        */}
+          {/* ================================================================== */}
           <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
             <Button
               variant="outlined"
               size="small"
-              onClick={handleAddImage}
+              onClick={handleAddImageClick} // <-- CAMBIADO
+              disabled={saving || multimedia.length >= 6}
               sx={{
                 borderColor: '#4CAF50',
                 color: '#4CAF50',
@@ -470,6 +539,7 @@ const EditPublicacion = () => {
             <Button
               variant="outlined"
               size="small"
+              disabled={saving}
               sx={{
                 borderColor: '#4CAF50',
                 color: '#4CAF50',
@@ -488,8 +558,16 @@ const EditPublicacion = () => {
             onClick={handleSaveConfirm}
             disabled={saving}
             sx={{
-              backgroundColor: '#4CAF50',
+              // ==================================================================
+              // 🎨 ARREGLO VISUAL: BOTÓN LEGIBLE
+              // ==================================================================
+              backgroundColor: '#4CAF50', // Fondo verde
+              color: 'white', // Texto blanco
               '&:hover': { backgroundColor: '#45A049' },
+              '&:disabled': { 
+                backgroundColor: '#BDBDBD',
+                color: '#757575' 
+              },
               borderRadius: '25px',
               py: 1.5,
               fontSize: '16px',

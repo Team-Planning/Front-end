@@ -7,23 +7,13 @@ export interface Multimedia {
   tipo?: string;
 }
 
-export interface Categoria {
-  id: string;
-  nombre: string;
-  descripcion?: string;
-  icono?: string;
-  activa: boolean;
-}
-
 export interface Publicacion {
   id?: string;
   id_vendedor: string;
-  id_producto?: string;
+  id_producto: string;
   titulo: string;
   descripcion: string;
   precio?: number;
-  categoriaId: string;
-  categoria?: Categoria;
   estado?: string;
   fechaCreacion?: string;
   fechaModificacion?: string;
@@ -33,11 +23,10 @@ export interface Publicacion {
 
 export interface CreatePublicacionDto {
   id_vendedor: string;
-  id_producto?: string;
+  id_producto: string;
   titulo: string;
   descripcion: string;
   precio?: number;
-  categoriaId: string;
   estado?: string;
   multimedia?: Multimedia[];
 }
@@ -48,7 +37,6 @@ export interface UpdatePublicacionDto {
   titulo?: string;
   descripcion?: string;
   precio?: number;
-  categoriaId?: string;
   estado?: string;
 }
 
@@ -61,7 +49,6 @@ class PublicacionesService {
     localStorage.setItem('publicaciones-update', Date.now().toString());
   }
 
-  // ✅ Obtener TODAS, incluidas las eliminadas o en revisión
   async getAll(opts?: GetAllOpts): Promise<Publicacion[]> {
     const response = await api.get('/publicaciones');
     let data: Publicacion[] = response.data;
@@ -78,7 +65,12 @@ class PublicacionesService {
   }
 
   async create(data: CreatePublicacionDto): Promise<Publicacion> {
-    const payload = { ...data, estado: data.estado ?? 'EN REVISION' };
+    // ==================================================================
+    // 🎨 ARREGLO:
+    // Cambiado 'EN REVISION' (mayúsculas) a 'en_revision' (minúsculas)
+    // para que coincida con la validación del backend.
+    // ==================================================================
+    const payload = { ...data, estado: data.estado ?? 'en_revision' };
     const response = await api.post('/publicaciones', payload);
     this.notifyListChanged();
     return response.data;
@@ -109,14 +101,12 @@ class PublicacionesService {
   async deleteMultimedia(multimediaId: string): Promise<void> {
     await api.delete(`/publicaciones/multimedia/${multimediaId}`);
   }
-  // ✅ Cambiar estado (eliminado / activo / revisión)
+
   async cambiarEstado(id: string, estado: string): Promise<Publicacion> {
     const response = await api.patch(`/publicaciones/${id}/estado`, { estado });
     this.notifyListChanged();
     return response.data;
   }
-
-
 }
 
 export default new PublicacionesService();

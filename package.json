@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.0.3",
     "axios": "^1.8.3",
     "date-fns": "^4.1.0",
+    "pulga-shop-ui": "^1.0.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.5",

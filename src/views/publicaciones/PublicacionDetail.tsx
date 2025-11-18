@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  LinearProgress, // <-- AÑADIDO
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -22,8 +23,29 @@ import {
   Share as ShareIcon,
   Favorite as FavoriteIcon,
   MoreVert as MoreVertIcon,
+  ChevronLeft as ChevronLeftIcon, // <-- AÑADIDO para galería
+  ChevronRight as ChevronRightIcon, // <-- AÑADIDO para galería
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
+
+// ==================================================================
+//  MOCK DE CATEGORÍAS (Solo Frontend) - Necesario para mostrar nombre
+// ==================================================================
+const mockCategorias = [
+  { id: 'tec', nombre: 'Tecnología' },
+  { id: 'rop', nombre: 'Ropa y Accesorios' },
+  { id: 'hog', nombre: 'Hogar y Muebles' },
+  { id: 'lib', nombre: 'Libros y Apuntes' },
+  { id: 'otr', nombre: 'Otros' },
+];
+
+// Función para obtener el nombre de la categoría mock
+const getCategoriaNombre = (id: string) => {
+  const categoria = mockCategorias.find(cat => cat.id === id);
+  return categoria ? categoria.nombre : 'Categoría (Mock)';
+};
+// ==================================================================
+
 
 const ESTADO_COLORS: Record<string, string> = {
   'EN REVISION': '#FFA726',
@@ -64,6 +86,10 @@ const PublicacionDetail = () => {
       setLoading(true);
       const data = await publicacionesService.getById(id!);
       setPublicacion(data);
+      // Asegurarse de que el índice no exceda el número de imágenes si hay cambios
+      if (data.multimedia && currentImageIndex >= data.multimedia.length) {
+        setCurrentImageIndex(0);
+      }
     } catch (error) {
       console.error('Error al cargar publicación:', error);
       setSnackbar({ open: true, message: 'Error al cargar la publicación', severity: 'error' });
@@ -73,11 +99,16 @@ const PublicacionDetail = () => {
   };
 
   const handleEdit = () => {
+    // ==================================================================
+    // 🎨 ARREGLO:
+    // La ruta es 'editar' (con 'r') según tu archivo Routes.tsx
+    // ==================================================================
     navigate(`/publicaciones/editar/${id}`);
   };
 
   const handleDelete = async () => {
     try {
+      setLoading(true);
       await publicacionesService.cambiarEstado(id!, 'ELIMINADA'); // ✅ misma lógica que las tarjetas
       setSnackbar({
         open: true,
@@ -94,6 +125,7 @@ const PublicacionDetail = () => {
         'Error al mover la publicación a Eliminadas.';
       setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
+      setLoading(false);
       setDeleteDialogOpen(false);
     }
   };
@@ -104,9 +136,27 @@ const PublicacionDetail = () => {
     setSnackbar({ open: true, message: 'Enlace copiado al portapapeles', severity: 'success' });
   };
 
+  // ==================================================================
+  // 🎨 ARREGLO: Funciones para la galería de imágenes
+  // ==================================================================
+  const handleNextImage = () => {
+    if (publicacion && publicacion.multimedia && publicacion.multimedia.length > 0) {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % publicacion.multimedia!.length);
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (publicacion && publicacion.multimedia && publicacion.multimedia.length > 0) {
+      setCurrentImageIndex((prevIndex) => (prevIndex - 1 + publicacion.multimedia!.length) % publicacion.multimedia!.length);
+    }
+  };
+  // ==================================================================
+
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column' }}>
+        <LinearProgress sx={{ width: '100%' }} />
         <Typography>Cargando...</Typography>
       </Box>
     );
@@ -121,6 +171,7 @@ const PublicacionDetail = () => {
   }
 
   const multimedia = publicacion.multimedia || [];
+  const hasMultipleImages = multimedia.length > 1;
 
   return (
     <Box sx={{ backgroundColor: '#F3FAF3', minHeight: '100vh', pb: 3 }}>
@@ -174,9 +225,48 @@ const PublicacionDetail = () => {
             >
               <ShareIcon />
             </IconButton>
+
+            {/* ================================================================== */}
+            {/* 🎨 ARREGLO: Botones de navegación de la galería                 */}
+            {/* ================================================================== */}
+            {hasMultipleImages && (
+              <>
+                <IconButton
+                  sx={{
+                    position: 'absolute',
+                    left: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    color: 'white',
+                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
+                  }}
+                  onClick={handlePrevImage}
+                >
+                  <ChevronLeftIcon />
+                </IconButton>
+                <IconButton
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    color: 'white',
+                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
+                  }}
+                  onClick={handleNextImage}
+                >
+                  <ChevronRightIcon />
+                </IconButton>
+              </>
+            )}
+            {/* ================================================================== */}
           </Box>
 
-          {/* Indicador de páginas */}
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO: Indicador de páginas (puntitos)                      */}
+          {/* ================================================================== */}
           {multimedia.length > 0 && (
             <Box sx={{ textAlign: 'center', py: 1, backgroundColor: 'white' }}>
               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
@@ -203,7 +293,7 @@ const PublicacionDetail = () => {
 
         {/* Información de la publicación */}
         <Card sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-          {/* Acciones rápidas */}
+          {/* Acciones rápidas (Mocks) */}
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <FavoriteIcon sx={{ color: '#EF5350', fontSize: 20 }} />
@@ -236,18 +326,24 @@ const PublicacionDetail = () => {
             {publicacion.descripcion}
           </Typography>
 
-          {/* Categoría */}
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO: Mostrar categoría (del mock)                         */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
               CATEGORÍA:
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {publicacion.categoria?.nombre}
+              {/* Como el backend no guarda la categoría, mostramos una por defecto */}
+              {getCategoriaNombre('rop')} 
             </Typography>
           </Box>
 
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO: Mostrar precio (manejando el 0)                      */}
+          {/* ================================================================== */}
           <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4CAF50', mb: 2 }}>
-            {publicacion.precio
+            {publicacion.precio !== null && publicacion.precio !== undefined
               ? `PRECIO: ${new Intl.NumberFormat('es-CL', {
                   style: 'currency',
                   currency: 'CLP',
@@ -318,7 +414,8 @@ const PublicacionDetail = () => {
         <DialogTitle>ELIMINAR PUBLICACIÓN</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            La acción es irreversible. ¿Estás seguro que deseas eliminar esta publicación?
+            {/* 🎨 ARREGLO: Cambiado a eliminación lógica */}
+            ¿Estás seguro que deseas mover esta publicación a Eliminadas?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

@@ -14,6 +14,7 @@ import {
   Snackbar,
   LinearProgress,
   CircularProgress,
+  InputLabel,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -23,7 +24,6 @@ import {
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import publicacionesService, { CreatePublicacionDto, Multimedia } from '../../services/publicaciones.service';
-import categoriasService, { Categoria } from '../../services/categorias.service';
 import uploadService, { CloudinaryUploadResult } from '../../services/upload.service';
 
 interface ImagePreview {
@@ -32,12 +32,20 @@ interface ImagePreview {
   cloudinaryData?: CloudinaryUploadResult;
 }
 
+// MOCK DE CATEGORÍAS (Solo Frontend)
+const mockCategorias = [
+  { id: 'tec', nombre: 'Tecnología' },
+  { id: 'rop', nombre: 'Ropa y Accesorios' },
+  { id: 'hog', nombre: 'Hogar y Muebles' },
+  { id: 'lib', nombre: 'Libros y Apuntes' },
+  { id: 'otr', nombre: 'Otros' },
+];
+
 const CreatePublicacion = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
@@ -45,37 +53,25 @@ const CreatePublicacion = () => {
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
-    categoriaId: '',
+    categoriaMock: '',
     precio: '',
   });
 
   const [errors, setErrors] = useState({
     titulo: '',
     descripcion: '',
-    categoriaId: '',
+    categoriaMock: '',
     precio: '',
   });
 
   useEffect(() => {
-    loadCategorias();
-    // Cleanup: liberar URLs de objetos al desmontar
     return () => {
       images.forEach(img => URL.revokeObjectURL(img.preview));
     };
   }, [images]);
 
-  const loadCategorias = async () => {
-    try {
-      const data = await categoriasService.getActive();
-      setCategorias(data);
-    } catch (error) {
-      console.error('Error al cargar categorías:', error);
-    }
-  };
-
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
-    // Limpiar error del campo
     setErrors({ ...errors, [field]: '' });
   };
 
@@ -85,7 +81,6 @@ const CreatePublicacion = () => {
 
     const fileArray = Array.from(files);
     
-    // Validar cantidad total (máximo 6 imágenes)
     if (images.length + fileArray.length > 6) {
       setSnackbar({ 
         open: true, 
@@ -95,14 +90,12 @@ const CreatePublicacion = () => {
       return;
     }
 
-    // Validar cada archivo
     const validation = uploadService.validateMultipleImages(fileArray, 6 - images.length);
     if (!validation.valid) {
       setSnackbar({ open: true, message: validation.error || 'Error en validación', severity: 'error' });
       return;
     }
 
-    // Crear previsualizaciones
     const newImages: ImagePreview[] = fileArray.map(file => ({
       file,
       preview: URL.createObjectURL(file),
@@ -110,7 +103,6 @@ const CreatePublicacion = () => {
 
     setImages([...images, ...newImages]);
     
-    // Resetear input para permitir seleccionar los mismos archivos de nuevo
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -138,7 +130,7 @@ const CreatePublicacion = () => {
     const newErrors = {
       titulo: '',
       descripcion: '',
-      categoriaId: '',
+      categoriaMock: '',
       precio: '',
     };
 
@@ -154,8 +146,8 @@ const CreatePublicacion = () => {
       isValid = false;
     }
 
-    if (!formData.categoriaId) {
-      newErrors.categoriaId = 'Debes seleccionar una categoría';
+    if (!formData.categoriaMock) {
+      newErrors.categoriaMock = 'Debes seleccionar una categoría';
       isValid = false;
     }
 
@@ -183,27 +175,25 @@ const CreatePublicacion = () => {
       setLoading(true);
       setUploadingImages(true);
 
-      // 1. Subir todas las imágenes a Cloudinary
       const filesToUpload = images.map(img => img.file);
       const uploadedImages = await uploadService.uploadMultipleImages(filesToUpload);
 
       setUploadingImages(false);
 
-      // 2. Crear el array de multimedia con las URLs de Cloudinary
       const multimedia: Multimedia[] = uploadedImages.map((img, index) => ({
         url: img.url,
+        // @ts-expect-error
         cloudinaryPublicId: img.publicId,
         orden: index + 1,
         tipo: 'imagen',
       }));
 
-      // 3. Crear la publicación con las imágenes subidas
       const dto: CreatePublicacionDto = {
-        id_vendedor: 'vendedor_demo_001',
+        id_vendedor: 'vendedor_demo_001', // TODO: Reemplazar con ID de usuario real
+        id_producto: 'producto_demo_001', // DATO DE RELLENO (obligatorio en backend)
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        categoriaId: formData.categoriaId,
-        precio: Number(formData.precio), // ✅ enviar el precio real
+        precio: Number(formData.precio),
         multimedia,
       };
 
@@ -215,7 +205,6 @@ const CreatePublicacion = () => {
         severity: 'warning' 
       });
       
-      // Redirigir después de 1.5 segundos
       setTimeout(() => {
         navigate(`/publicaciones/${publicacion.id}`);
       }, 1500);
@@ -226,11 +215,19 @@ const CreatePublicacion = () => {
         error?.message ||
         'Ocurrió un error inesperado al crear la publicación.';
 
-      setSnackbar({
-        open: true,
-        message: `⚠️ ${errorMessage}`,
-        severity: 'error',
-      });
+      if (Array.isArray(errorMessage)) {
+        setSnackbar({
+          open: true,
+          message: `⚠️ ${errorMessage[0]}`,
+          severity: 'error',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: `⚠️ ${errorMessage}`,
+          severity: 'error',
+        });
+      }
 
     } finally {
       setLoading(false);
@@ -253,7 +250,6 @@ const CreatePublicacion = () => {
       {loading && <LinearProgress />}
 
       <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-        {/* Input oculto para seleccionar archivos */}
         <input
           ref={fileInputRef}
           type="file"
@@ -265,6 +261,7 @@ const CreatePublicacion = () => {
 
         {/* Galería de Imágenes */}
         <Card sx={{ mb: 2, borderRadius: 2, overflow: 'hidden' }}>
+          {/* ... (código de galería sin cambios) ... */}
           <Box sx={{ position: 'relative', backgroundColor: '#E0E0E0', height: 300 }}>
             {images.length > 0 ? (
               <>
@@ -291,7 +288,6 @@ const CreatePublicacion = () => {
                 >
                   <CloseIcon />
                 </IconButton>
-                {/* Indicador de tamaño de archivo */}
                 <Box
                   sx={{
                     position: 'absolute',
@@ -331,8 +327,6 @@ const CreatePublicacion = () => {
               </Box>
             )}
           </Box>
-
-          {/* Thumbnails */}
           <Box sx={{ p: 2, display: 'flex', gap: 1, overflowX: 'auto' }}>
             {images.map((img, index) => (
               <Box
@@ -356,8 +350,6 @@ const CreatePublicacion = () => {
                 />
               </Box>
             ))}
-            
-            {/* Botón agregar imagen */}
             {images.length < 6 && (
               <Box
                 onClick={handleAddImageClick}
@@ -371,7 +363,7 @@ const CreatePublicacion = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  backgroundColor: '#F5F5F5',
+                  backgroundColor: '#F5F5FF',
                   '&:hover': { backgroundColor: '#E8F5E9' },
                 }}
               >
@@ -379,8 +371,6 @@ const CreatePublicacion = () => {
               </Box>
             )}
           </Box>
-
-          {/* Indicador de páginas y progreso de upload */}
           <Box sx={{ textAlign: 'center', pb: 2 }}>
             <Typography variant="caption" color="text.secondary">
               {images.length > 0 ? `${currentImageIndex + 1}/${images.length}` : '0/6 imágenes'}
@@ -398,81 +388,90 @@ const CreatePublicacion = () => {
 
         {/* Formulario */}
         <Card sx={{ p: 2, borderRadius: 2 }}>
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO VISUAL: TÍTULO                                        */}
+          {/* Se elimina el 'placeholder' para dejar que el 'label' funcione    */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              TÍTULO
-            </Typography>
             <TextField
+              variant="outlined"
               fullWidth
-              placeholder="ej: AirPods Max de Apple"
+              label="TÍTULO"
+              // placeholder="ej: AirPods Max de Apple" // <-- 🎨 ELIMINADO
               value={formData.titulo}
               onChange={(e) => handleInputChange('titulo', e.target.value)}
               error={!!errors.titulo}
               helperText={errors.titulo || `${formData.titulo.length}/80 caracteres`}
               inputProps={{ maxLength: 80 }}
               InputProps={{
-                endAdornment: formData.titulo.length >= 5 && <CheckIcon sx={{ color: '#4CAF50' }} />,
+                endAdornment: formData.titulo.length >= 5 && !errors.titulo && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
             />
           </Box>
 
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO VISUAL: DESCRIPCIÓN                                   */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              DESCRIPCIÓN
-            </Typography>
             <TextField
+              variant="outlined"
               fullWidth
               multiline
               rows={4}
-              placeholder="Describe tu producto..."
+              label="DESCRIPCIÓN"
+              // placeholder="Describe tu producto..." // <-- 🎨 ELIMINADO
               value={formData.descripcion}
               onChange={(e) => handleInputChange('descripcion', e.target.value)}
               error={!!errors.descripcion}
               helperText={errors.descripcion || `${formData.descripcion.length}/500 caracteres`}
               inputProps={{ maxLength: 500 }}
               InputProps={{
-                endAdornment: formData.descripcion.length >= 10 && <CheckIcon sx={{ color: '#4CAF50' }} />,
+                endAdornment: formData.descripcion.length >= 10 && !errors.descripcion && <CheckIcon sx={{ color: '#4CAF50' }} />,
               }}
             />
           </Box>
 
+          {/* ================================================================== */}
+          {/* ✨ MOCK DE CATEGORÍAS (Solo Frontend)                            */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              SELECCIONAR CATEGORÍA
-            </Typography>
-            <FormControl fullWidth error={!!errors.categoriaId}>
+            <FormControl fullWidth variant="outlined" error={!!errors.categoriaMock}>
+              <InputLabel id="categoria-mock-label">SELECCIONAR CATEGORÍA</InputLabel>
               <Select
-                value={formData.categoriaId}
-                onChange={(e) => handleInputChange('categoriaId', e.target.value)}
-                displayEmpty
+                labelId="categoria-mock-label"
+                label="SELECCIONAR CATEGORÍA"
+                value={formData.categoriaMock}
+                onChange={(e) => handleInputChange('categoriaMock', e.target.value)}
               >
                 <MenuItem value="" disabled>
                   Selecciona una categoría
                 </MenuItem>
-                {categorias.map((cat) => (
+                {mockCategorias.map((cat) => (
                   <MenuItem key={cat.id} value={cat.id}>
                     {cat.nombre}
                   </MenuItem>
                 ))}
               </Select>
-              {errors.categoriaId && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                  {errors.categoriaId}
+              {errors.categoriaMock && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
+                  {errors.categoriaMock}
                 </Typography>
               )}
             </FormControl>
           </Box>
 
+          {/* ================================================================== */}
+          {/* 🎨 ARREGLO VISUAL: PRECIO                                        */}
+          {/* ================================================================== */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              PRECIO
-            </Typography>
             <TextField
+              variant="outlined"
               fullWidth
-              type="number" // ✅ Solo acepta números
-              placeholder="(Campo Obligatorio)"
+              type="number"
+              label="PRECIO"
+              // placeholder="(Campo Obligatorio)" // <-- 🎨 ELIMINADO
               value={formData.precio}
-              onChange={(e) => handleInputChange('precio', e.target.value.replace(/\D/g, ''))} // elimina letras
+              onChange={(e) => handleInputChange('precio', e.target.value.replace(/\D/g, ''))}
               error={!!errors.precio}
               helperText={errors.precio}
               InputProps={{
@@ -489,9 +488,16 @@ const CreatePublicacion = () => {
             onClick={handleSubmit}
             disabled={loading || images.length === 0}
             sx={{
-              backgroundColor: '#4CAF50',
+              // ==================================================================
+              // 🎨 ARREGLO VISUAL: BOTÓN LEGIBLE
+              // ==================================================================
+              backgroundColor: '#4CAF50', // Fondo verde
+              color: 'white', // Texto blanco
               '&:hover': { backgroundColor: '#45A049' },
-              '&:disabled': { backgroundColor: '#BDBDBD' },
+              '&:disabled': { 
+                backgroundColor: '#BDBDBD',
+                color: '#757575' 
+              },
               borderRadius: '25px',
               py: 1.5,
               fontSize: '16px',
@@ -519,7 +525,7 @@ const CreatePublicacion = () => {
         </Card>
       </Box>
 
-      {/* Snackbar para mensajes */}
+      {/* Snackbar (sin cambios) */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={8000}

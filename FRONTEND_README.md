@@ -97,7 +97,7 @@ Frontend desarrollado con **React + TypeScript + Material-UI** que se conecta al
 
 ### Configuración API
 ```typescript
-API_BASE_URL = 'http://localhost:3000/api'
+API_BASE_URL = 'http://localhost:4000/api'
 ```
 
 ## 🗂️ Estructura de Archivos
