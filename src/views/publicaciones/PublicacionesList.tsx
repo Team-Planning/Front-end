@@ -13,6 +13,13 @@ import {
   InputAdornment,
   IconButton,
   Skeleton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,15 +43,24 @@ const getCategoriaNombre = (id: string) => {
   return cat ? cat.nombre : 'Sin categoría';
 };
 
+// Normalizamos las claves para soportar 'en_revision', 'EN REVISION', 'EN_REVISION', etc.
 const ESTADO_COLORS: Record<string, string> = {
-  'EN REVISION': '#FFA726',
-  'BORRADOR': '#757575',
-  'ACTIVO': '#66BB6A',
-  'PAUSADO': '#FFA726',
-  'VENDIDO': '#42A5F5',
-  'RECHAZADO': '#EF5350',
-  'ELIMINADO': '#9E9E9E',
-  'ELIMINADA': '#9E9E9E',
+  ENREVISION: '#FFA726',
+  BORRADOR: '#757575',
+  ACTIVO: '#66BB6A',
+  PAUSADO: '#FFA726',
+  VENDIDO: '#42A5F5',
+  RECHAZADO: '#EF5350',
+  ELIMINADO: '#9E9E9E',
+};
+
+const normalizeEstadoKey = (estado?: string) => (estado ?? 'EN_REVISION').toString().toUpperCase().replace(/[_\s]/g, '');
+const formatEstadoLabel = (estado?: string) => {
+  const text = (estado ?? 'EN_REVISION').toString().replace(/_/g, ' ');
+  return text
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 };
 
 export default function PublicacionesList() {
@@ -53,6 +69,8 @@ export default function PublicacionesList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'TODAS' | 'ACTIVAS' | 'REVISION' | 'ELIMINADAS'>('TODAS');
+  const [deleteDialog, setDeleteDialog] = useState<any>({ open: false, id: null, restore: false });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   useEffect(() => {
     loadPublicaciones();
@@ -90,25 +108,33 @@ export default function PublicacionesList() {
     return matchesStatus(pub) && (titulo.includes(search) || descripcion.includes(search));
   });
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Seguro que deseas eliminar esta publicación?')) return;
-    try {
-      await publicacionesService.cambiarEstado(id, 'ELIMINADA');
-      await loadPublicaciones();
-    } catch (error) {
-      console.error('Error al eliminar:', error);
-      alert('Error al eliminar la publicación');
-    }
+  const handleDelete = (id: string) => {
+    setDeleteDialog({ open: true, id, restore: false });
   };
 
-  const handleRestore = async (id: string) => {
-    if (!window.confirm('¿Restaurar esta publicación?')) return;
+  const handleRestore = (id: string) => {
+    setDeleteDialog({ open: true, id, restore: true });
+  };
+
+  const confirmChangeState = async () => {
+    const { id, restore } = deleteDialog;
+    if (!id) return;
     try {
-      await publicacionesService.cambiarEstado(id, 'ACTIVO');
+      if (restore) {
+        // Restauración local (front-only): marca como 'activo'
+        await publicacionesService.restorePublicationLocal(id);
+      } else {
+        // Marcar publicación como eliminada en frontend (no tocar backend)
+        await publicacionesService.markPublicationDeletedLocal(id);
+      }
+      setSnackbar({ open: true, message: restore ? 'Publicación restaurada' : 'Publicación movida a Eliminadas', severity: 'success' });
       await loadPublicaciones();
     } catch (error) {
-      console.error('Error al restaurar:', error);
-      alert('Error al restaurar la publicación');
+      console.error('Error al cambiar estado:', error);
+      const msg = (error as any)?.response?.data?.message || 'Error al cambiar el estado de la publicación';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setDeleteDialog({ open: false, id: null, restore: false });
     }
   };
 
@@ -144,30 +170,48 @@ export default function PublicacionesList() {
         ))}
       </Box>
 
-      {/* Buscador */}
-      <TextField
-        fullWidth
-        placeholder="Buscar publicaciones..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-        sx={{
-          mb: 4,
-          backgroundColor: 'white',
-          borderRadius: 2,
-          '& .MuiOutlinedInput-root': {
-            '& fieldset': { borderColor: '#E0E0E0' },
-            '&:hover fieldset': { borderColor: 'primary.main' },
-            '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-          },
-        }}
-      />
+      {/* Buscador + Crear */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, alignItems: 'center' }}>
+        <TextField
+          placeholder="Buscar publicaciones..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            flex: 1,
+            backgroundColor: 'white',
+            borderRadius: 2,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': { borderColor: '#E0E0E0' },
+              '&:hover fieldset': { borderColor: 'primary.main' },
+              '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+            },
+          }}
+        />
+
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleCreateNew}
+          sx={{
+            backgroundColor: 'primary.main',
+            borderRadius: '25px',
+            textTransform: 'none',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            padding: '10px 18px',
+            '&:hover': { backgroundColor: 'primary.dark' },
+          }}
+        >
+          Crear Publicación
+        </Button>
+      </Box>
 
       {/* Publicaciones */}
       {loading ? (
@@ -282,10 +326,10 @@ export default function PublicacionesList() {
                           sx={{ bgcolor: '#E8F5E9', color: 'primary.main', fontWeight: 600 }}
                         />
                         <Chip
-                          label={(pub.estado ?? 'EN REVISION').replace(/_/g, ' ')}
+                          label={formatEstadoLabel(pub.estado)}
                           size="small"
                           sx={{
-                            bgcolor: ESTADO_COLORS[(pub.estado ?? 'EN REVISION').toUpperCase()],
+                            bgcolor: ESTADO_COLORS[normalizeEstadoKey(pub.estado)] || '#BDBDBD',
                             color: 'white',
                             fontWeight: 600,
                           }}
@@ -330,24 +374,31 @@ export default function PublicacionesList() {
             })}
           </Grid>
 
-          <Box sx={{ textAlign: 'center', mt: 5 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreateNew}
-              sx={{
-                backgroundColor: 'primary.main',
-                borderRadius: '25px',
-                textTransform: 'none',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                padding: '12px 36px',
-                '&:hover': { backgroundColor: 'primary.dark' },
-              }}
-            >
-              Crear Publicación
-            </Button>
-          </Box>
+          {/* Dialog de confirmación para eliminar/restaurar */}
+          <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, restore: false })}>
+            <DialogTitle>{deleteDialog.restore ? 'Restaurar publicación' : 'Eliminar publicación'}</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                {deleteDialog.restore
+                  ? '¿Estás seguro que deseas restaurar esta publicación?'
+                  : '¿Estás seguro que deseas mover esta publicación a Eliminadas?'}
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteDialog({ open: false, id: null, restore: false })} sx={{ color: '#757575' }}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmChangeState} sx={{ color: deleteDialog.restore ? 'primary.main' : '#EF5350', fontWeight: 'bold' }}>
+                Confirmar
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+            <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
         </>
       )}
     </Box>

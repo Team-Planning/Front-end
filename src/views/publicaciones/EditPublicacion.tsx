@@ -8,7 +8,7 @@ import {
   Button,
   FormControl,
   Select,
-  MenuItem,
+  MenuItem, 
   IconButton,
   Alert,
   Snackbar,
@@ -89,7 +89,7 @@ const EditPublicacion = () => {
         titulo: data.titulo,
         descripcion: data.descripcion,
         categoriaMock: 'rop', // <-- CAMBIADO (ponemos un valor mock, ej: "Ropa y Accesorios")
-        precio: data.precio ? String(data.precio) : '0',
+        precio: data.precio !== undefined && data.precio !== null ? String(data.precio) : '',
       });
       setMultimedia(data.multimedia || []);
     } catch (error) {
@@ -166,18 +166,11 @@ const EditPublicacion = () => {
     
     if (multimediaToDelete.id) {
       setSaving(true); // Muestra spinner
-      publicacionesService.deleteMultimedia(multimediaToDelete.id)
+      // Marca la multimedia como eliminada localmente y marca la publicación como eliminada localmente
+      publicacionesService.deleteMultimedia(multimediaToDelete.id, publicacion?.id)
         .then(() => {
-          const newMultimedia = multimedia.filter((_, i) => i !== index);
-          const reordered = newMultimedia.map((m, i) => ({ ...m, orden: i }));
-          setMultimedia(reordered);
-          
-          if (currentImageIndex >= reordered.length && reordered.length > 0) {
-            setCurrentImageIndex(reordered.length - 1);
-          } else if (newMultimedia.length === 0) {
-            setCurrentImageIndex(0);
-          }
-          
+          // Recargar publicación para mantener consistencia con backend
+          loadPublicacion();
           setSnackbar({ open: true, message: 'Imagen eliminada correctamente', severity: 'success' });
         })
         .catch((error) => {
@@ -215,9 +208,13 @@ const EditPublicacion = () => {
       isValid = false;
     }
 
-    if (!formData.precio) {
-      newErrors.precio = 'El precio es obligatorio';
-      isValid = false;
+    // Precio opcional en edición: el usuario puede dejarlo vacío para eliminarlo
+    if (formData.precio) {
+      const num = Number(formData.precio);
+      if (Number.isNaN(num) || num < 0) {
+        newErrors.precio = 'El precio debe ser un número válido >= 0';
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -241,7 +238,8 @@ const EditPublicacion = () => {
       const dto: UpdatePublicacionDto = {
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        precio: Number(formData.precio),
+        // Precio opcional: si el campo queda vacío no lo enviamos al backend
+        ...(formData.precio !== '' ? { precio: Number(formData.precio) } : {}),
         // No enviamos 'categoriaMock'
       };
 
@@ -292,12 +290,12 @@ const EditPublicacion = () => {
   return (
     <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
       {/* Header con fondo theme - full-bleed (compensa padding del layout) */}
-      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
+        <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
         <IconButton onClick={() => navigate(`/publicaciones/${id}`)} sx={{ color: 'primary.contrastText', mr: 2 }}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-          Editar Publicación ✏️
+          Editar Publicación
         </Typography>
       </Box>
 
@@ -330,17 +328,31 @@ const EditPublicacion = () => {
           >
             Eliminar foto
           </Button>
+
           <Button
             variant="outlined"
             size="small"
-            disabled={saving}
-              sx={{
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                borderRadius: '20px',
-                textTransform: 'none',
-                '&:hover': { borderColor: 'primary.dark', backgroundColor: '#F1F8E9' },
-              }}
+            onClick={async () => {
+              if (!publicacion || !multimedia[currentImageIndex]?.id) return;
+              setSaving(true);
+              try {
+                await publicacionesService.setPortadaLocal(publicacion.id!, multimedia[currentImageIndex].id!);
+                await loadPublicacion();
+                setSnackbar({ open: true, message: 'Portada actualizada', severity: 'success' });
+              } catch (e) {
+                console.error(e);
+                setSnackbar({ open: true, message: 'Error al definir portada', severity: 'error' });
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving || multimedia.length === 0 || currentImageIndex === 0}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              borderRadius: '20px',
+              textTransform: 'none',
+            }}
           >
             Definir como portada
           </Button>
@@ -374,6 +386,20 @@ const EditPublicacion = () => {
                 >
                   <CloseIcon />
                 </IconButton>
+                <Box sx={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 1, alignItems: 'center' }}>
+                  {multimedia[currentImageIndex]?.eliminado && (
+                    <>
+                      <Typography variant="caption" sx={{ backgroundColor: 'rgba(255,255,255,0.9)', px: 1, py: 0.5, borderRadius: 1, color: '#D32F2F', fontWeight: 'bold' }}>
+                        Eliminada
+                      </Typography>
+                      <Button size="small" variant="contained" color="success" onClick={async () => { setSaving(true); try { await publicacionesService.restoreMultimediaLocal(multimedia[currentImageIndex].id!); await loadPublicacion(); setSnackbar({ open: true, message: 'Imagen restaurada', severity: 'success' }); } catch (e:any) { console.error(e); const msg = e?.response?.data?.message || 'Error al restaurar imagen'; setSnackbar({ open: true, message: msg, severity: 'error' }); } finally { setSaving(false); } }}>
+                        Restaurar
+                      </Button>
+                    </>
+                  )}
+
+                  {/* No 'Definir como portada' aquí; el botón superior es la fuente de verdad */}
+                </Box>
               </>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -408,6 +434,13 @@ const EditPublicacion = () => {
                   loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
+                {img.eliminado && (
+                  <Box sx={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="caption" sx={{ color: 'white', backgroundColor: 'rgba(211,47,47,0.85)', px: 0.8, py: 0.4, borderRadius: 1 }}>
+                      Eliminada
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             ))}
             
@@ -438,7 +471,9 @@ const EditPublicacion = () => {
           {/* Indicador */}
           <Box sx={{ textAlign: 'center', pb: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              {multimedia.length > 0 ? `${currentImageIndex + 1}/${multimedia.length}` : '0'}/6 fotos
+              {multimedia.length > 0
+                ? `${currentImageIndex + 1}/${multimedia.length} fotos`
+                : `0/6 fotos`}
             </Typography>
           </Box>
         </Card>
@@ -553,19 +588,7 @@ const EditPublicacion = () => {
             >
               📷 (Máximo 6 fotos)
             </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={saving}
-              sx={{
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                borderRadius: '20px',
-                textTransform: 'none',
-              }}
-            >
-              📹
-            </Button>
+            {/* Removed video button as requested */}
           </Box>
 
           {/* Botón Guardar */}

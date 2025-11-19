@@ -21,11 +21,9 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Share as ShareIcon,
-  Favorite as FavoriteIcon,
   MoreVert as MoreVertIcon,
   ChevronLeft as ChevronLeftIcon, // <-- AÑADIDO para galería
   ChevronRight as ChevronRightIcon, // <-- AÑADIDO para galería
-  Visibility as VisibilityIcon,
   PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
@@ -49,22 +47,25 @@ const getCategoriaNombre = (id: string) => {
 // ==================================================================
 
 
+// Normalizamos las claves quitando espacios/guiones bajos y usando mayúsculas
 const ESTADO_COLORS: Record<string, string> = {
-  'EN REVISION': '#FFA726',
-  'BORRADOR': '#757575',
-  'ACTIVO': '#66BB6A',
-  'PAUSADO': '#FFA726',
-  'VENDIDO': '#42A5F5',
-  'RECHAZADO': '#EF5350',
+  ENREVISION: '#FFA726',
+  BORRADOR: '#757575',
+  ACTIVO: '#66BB6A',
+  PAUSADO: '#FFA726',
+  VENDIDO: '#42A5F5',
+  RECHAZADO: '#EF5350',
+  ELIMINADO: '#EF9A9A',
 };
 
-const ESTADO_TEXT: Record<string, string> = {
-  'EN REVISION': 'Publicación En Espera',
-  'BORRADOR': 'Publicación Borrador',
-  'ACTIVO': 'Publicación Activa',
-  'PAUSADO': 'Publicación Pausada',
-  'VENDIDO': 'Publicación Vendida',
-  'RECHAZADO': 'Publicación Rechazada',
+
+const normalizeEstadoKey = (estado?: string) => (estado ?? 'EN_REVISION').toString().toUpperCase().replace(/[_\s]/g, '');
+const formatEstadoLabel = (estado?: string) => {
+  const text = (estado ?? 'EN_REVISION').toString().replace(/_/g, ' ');
+  return text
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 };
 
 const PublicacionDetail = () => {
@@ -112,7 +113,7 @@ const PublicacionDetail = () => {
   const handleDelete = async () => {
     try {
       setLoading(true);
-      await publicacionesService.cambiarEstado(id!, 'ELIMINADA'); // ✅ misma lógica que las tarjetas
+      await publicacionesService.cambiarEstado(id!, 'eliminado'); // enviar estado en minúscula esperado por backend
       setSnackbar({
         open: true,
         message: 'Publicación movida a Eliminadas correctamente',
@@ -197,9 +198,7 @@ const PublicacionDetail = () => {
             Detalle de publicación
           </Typography>
         </Box>
-        <IconButton sx={{ color: 'white' }}>
-          <MoreVertIcon />
-        </IconButton>
+        {/* Overflow menu removed per request */}
       </Box>
 
       <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
@@ -305,19 +304,11 @@ const PublicacionDetail = () => {
 
         {/* Información de la publicación */}
         <Card sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-          {/* Acciones rápidas (Mocks) */}
+          {/* Acciones rápidas (solo interesado) */}
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <VisibilityIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-              <Typography variant="caption">5 vistas</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <FavoriteIcon sx={{ color: '#EF5350', fontSize: 20 }} />
-              <Typography variant="caption">3 me gusta</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <PersonAddIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-              <Typography variant="caption">1 interesados</Typography>
+              <Typography variant="caption">1 interesado</Typography>
             </Box>
           </Box>
 
@@ -373,9 +364,9 @@ const PublicacionDetail = () => {
 
           {/* Estado */}
           <Chip
-            label={publicacion.estado}
+            label={formatEstadoLabel(publicacion.estado)}
             sx={{
-              backgroundColor: ESTADO_COLORS[publicacion.estado || 'EN REVISION'],
+              backgroundColor: ESTADO_COLORS[normalizeEstadoKey(publicacion.estado)] || '#BDBDBD',
               color: 'white',
               fontWeight: 'bold',
             }}

@@ -5,6 +5,7 @@ export interface Multimedia {
   url: string;
   orden: number;
   tipo?: string;
+  eliminado?: boolean;
 }
 
 export interface Publicacion {
@@ -19,6 +20,7 @@ export interface Publicacion {
   fechaModificacion?: string;
   multimedia?: Multimedia[];
   moderaciones?: any[];
+  categoria?: { nombre?: string } | null;
 }
 
 export interface CreatePublicacionDto {
@@ -50,18 +52,34 @@ class PublicacionesService {
   }
 
   async getAll(opts?: GetAllOpts): Promise<Publicacion[]> {
-    const response = await api.get('/publicaciones');
+    const params: any = {};
+    if (opts?.includeEliminadas) params.includeEliminadas = true;
+    const response = await api.get('/publicaciones', { params });
     let data: Publicacion[] = response.data;
 
+    // Inyectar estado 'eliminado' en multimedia según flags locales y overrides de estado de publicación
+    const deletedMap = this._readDeletedMap();
+    const estadoMap = this._readEstadoMap();
+    const portadaMap = this._readPortadaMap();
+    data = data.map((p) => {
+      let withFlags = this._applyDeletedFlags(p, deletedMap);
+      const withEstado = this._applyEstadoOverride(withFlags, estadoMap);
+      return this._applyPortadaOverride(withEstado, portadaMap);
+    });
+
     if (opts?.includeEliminadas) return data;
-    return data.filter(
-      (p) => !(p.estado ?? '').toUpperCase().includes('ELIMIN')
-    );
+    return data.filter((p) => !(p.estado ?? '').toUpperCase().includes('ELIMIN'));
   }
 
   async getById(id: string): Promise<Publicacion> {
     const response = await api.get(`/publicaciones/${id}`);
-    return response.data;
+    const pub: Publicacion = response.data;
+    const deletedMap = this._readDeletedMap();
+    const estadoMap = this._readEstadoMap();
+    const portadaMap = this._readPortadaMap();
+    const withFlags = this._applyDeletedFlags(pub, deletedMap);
+    const withEstado = this._applyEstadoOverride(withFlags, estadoMap);
+    return this._applyPortadaOverride(withEstado, portadaMap);
   }
 
   async create(data: CreatePublicacionDto): Promise<Publicacion> {
@@ -98,10 +116,181 @@ class PublicacionesService {
     return response.data;
   }
 
-  async deleteMultimedia(multimediaId: string): Promise<void> {
-    await api.delete(`/publicaciones/multimedia/${multimediaId}`);
+  async deleteMultimedia(multimediaId: string, publicacionId?: string, markPublicationDeleted = true): Promise<void> {
+    // Marca la multimedia como eliminada en localStorage (front-only)
+    this._markMultimediaDeletedLocal(multimediaId);
+    // Opcional: marcar la publicación como eliminada localmente para que aparezca en la sección Eliminadas
+    if (publicacionId && markPublicationDeleted) {
+      this._markPublicationDeletedLocal(publicacionId);
+    }
+    this.notifyListChanged();
   }
 
+  async restoreMultimediaLocal(multimediaId: string): Promise<void> {
+    this._restoreMultimediaLocal(multimediaId);
+    this.notifyListChanged();
+  }
+
+  // -----------------
+  // Local storage helpers
+  // -----------------
+  private _deletedMapKey = 'publicacion_multimedia_deleted_v1';
+  private _estadoOverrideKey = 'publicacion_estado_override_v1';
+  private _portadaKey = 'publicacion_portada_v1';
+
+  private _readPortadaMap(): Record<string, string> {
+    try {
+      const raw = localStorage.getItem(this._portadaKey);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  private _writePortadaMap(m: Record<string, string>) {
+    try {
+      localStorage.setItem(this._portadaKey, JSON.stringify(m));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async setPortadaLocal(publicacionId: string, multimediaId: string) {
+    try {
+      const map = this._readPortadaMap();
+      map[publicacionId] = multimediaId;
+      this._writePortadaMap(map);
+      this.notifyListChanged();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private _applyPortadaOverride(pub: Publicacion, portadaMap: Record<string, string>): Publicacion {
+    try {
+      if (!pub || !pub.id || !pub.multimedia || pub.multimedia.length === 0) return pub;
+      const portadaId = portadaMap[pub.id];
+      if (!portadaId) return pub;
+      const idx = pub.multimedia.findIndex((m) => m.id === portadaId);
+      if (idx === -1) return pub;
+      // Move selected multimedia to front
+      const copy = [...pub.multimedia];
+      const [sel] = copy.splice(idx, 1);
+      copy.unshift(sel);
+      return { ...pub, multimedia: copy };
+    } catch (e) {
+      return pub;
+    }
+  }
+
+  private _readEstadoMap(): Record<string, string> {
+    try {
+      const raw = localStorage.getItem(this._estadoOverrideKey);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  private _writeEstadoMap(m: Record<string, string>) {
+    try {
+      localStorage.setItem(this._estadoOverrideKey, JSON.stringify(m));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private _markPublicationDeletedLocal(publicacionId: string) {
+    const map = this._readEstadoMap();
+    map[publicacionId] = 'eliminado';
+    this._writeEstadoMap(map);
+  }
+
+  async markPublicationDeletedLocal(publicacionId: string) {
+    this._markPublicationDeletedLocal(publicacionId);
+    this.notifyListChanged();
+  }
+
+  async restorePublicationLocal(publicacionId: string) {
+    const map = this._readEstadoMap();
+    // Restaurar a 'activo'
+    map[publicacionId] = 'activo';
+    this._writeEstadoMap(map);
+    this.notifyListChanged();
+  }
+
+  private _applyEstadoOverride(pub: Publicacion, estadoMap: Record<string, string>): Publicacion {
+    try {
+      if (!pub || !pub.id) return pub;
+      const override = estadoMap[pub.id];
+      if (!override) return pub;
+      return { ...pub, estado: override };
+    } catch (e) {
+      return pub;
+    }
+  }
+
+  private _readDeletedMap(): Record<string, string[]> {
+    try {
+      const raw = localStorage.getItem(this._deletedMapKey);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  private _writeDeletedMap(m: Record<string, string[]>) {
+    try {
+      localStorage.setItem(this._deletedMapKey, JSON.stringify(m));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private _markMultimediaDeletedLocal(multimediaId: string) {
+    // We don't have publicationId here; try to find it by searching cached publications in localStorage if any
+    // Simpler approach: store a flat list of deleted multimedia ids under special key
+    const key = `${this._deletedMapKey}_flat`;
+    try {
+      const raw = localStorage.getItem(key);
+      const arr: string[] = raw ? JSON.parse(raw) : [];
+      if (!arr.includes(multimediaId)) arr.push(multimediaId);
+      localStorage.setItem(key, JSON.stringify(arr));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private _restoreMultimediaLocal(multimediaId: string) {
+    const key = `${this._deletedMapKey}_flat`;
+    try {
+      const raw = localStorage.getItem(key);
+      const arr: string[] = raw ? JSON.parse(raw) : [];
+      const idx = arr.indexOf(multimediaId);
+      if (idx !== -1) {
+        arr.splice(idx, 1);
+        localStorage.setItem(key, JSON.stringify(arr));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private _applyDeletedFlags(pub: Publicacion, _map: Record<string, string[]>): Publicacion {
+    try {
+      const key = `${this._deletedMapKey}_flat`;
+      const raw = localStorage.getItem(key);
+      const arr: string[] = raw ? JSON.parse(raw) : [];
+      if (!pub || !pub.multimedia) return pub;
+      const multimedia = pub.multimedia.map((m) => ({ ...m, eliminado: !!(m.id && arr.includes(m.id)) }));
+      return { ...pub, multimedia };
+    } catch (e) {
+      return pub;
+    }
+  }
   async cambiarEstado(id: string, estado: string): Promise<Publicacion> {
     const response = await api.patch(`/publicaciones/${id}/estado`, { estado });
     this.notifyListChanged();
