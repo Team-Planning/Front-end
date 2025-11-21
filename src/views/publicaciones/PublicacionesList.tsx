@@ -264,7 +264,7 @@ export default function PublicacionesList() {
                     <Box sx={{ width: '100%', height: 260, overflow: 'hidden' }}>
                       <CardMedia
                         component="img"
-                        image={pub.multimedia?.[0]?.url || '/placeholder.jpg'}
+                          image={pub.multimedia?.find((m) => !m.eliminado)?.url || '/placeholder.jpg'}
                         alt={pub.titulo}
                         loading="lazy"
                         sx={{

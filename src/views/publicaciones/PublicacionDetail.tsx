@@ -189,7 +189,9 @@ const PublicacionDetail = () => {
   }
 
   const multimedia = publicacion.multimedia || [];
-  const hasMultipleImages = multimedia.length > 1;
+  // Mostrar solo multimedia que no estén marcadas como eliminadas
+  const visibleMultimedia = multimedia.filter((m) => !m.eliminado);
+  const hasMultipleImages = visibleMultimedia.length > 1;
 
   // Leer valores mock guardados localmente (precio, categoria) si existen
   const extrasRaw = typeof window !== 'undefined' ? localStorage.getItem('publicacion_extras') : null;
@@ -215,9 +217,9 @@ const PublicacionDetail = () => {
         {/* Galería de Imágenes */}
         <Card sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
           <Box sx={{ position: 'relative', backgroundColor: '#E0E0E0', height: 350 }}>
-            {multimedia.length > 0 ? (
+            {visibleMultimedia.length > 0 ? (
               <img
-                src={multimedia[currentImageIndex].url}
+                src={visibleMultimedia[currentImageIndex]?.url || visibleMultimedia[0].url}
                 alt={publicacion.titulo}
                 style={{
                   width: '100%',
@@ -288,10 +290,10 @@ const PublicacionDetail = () => {
           {/* ================================================================== */}
           {/* 🎨 ARREGLO: Indicador de páginas (puntitos)                      */}
           {/* ================================================================== */}
-          {multimedia.length > 0 && (
+          {visibleMultimedia.length > 0 && (
             <Box sx={{ textAlign: 'center', py: 1, backgroundColor: 'white' }}>
               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                {multimedia.map((_, index) => (
+                {visibleMultimedia.map((_, index) => (
                   <Box
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
@@ -306,7 +308,7 @@ const PublicacionDetail = () => {
                 ))}
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                {currentImageIndex + 1}/{multimedia.length}
+                {currentImageIndex + 1}/{visibleMultimedia.length}
               </Typography>
             </Box>
           )}
