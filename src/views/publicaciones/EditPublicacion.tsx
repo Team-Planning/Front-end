@@ -112,38 +112,42 @@ const EditPublicacion = () => {
     const files = event.target.files;
     if (!files || files.length === 0 || !publicacion) return;
 
-    // Tomamos solo el primer archivo para simplificar
-    const file = files[0]; 
-    const validation = uploadService.validateImage(file);
-
-    if (!validation.valid) {
-      setSnackbar({ open: true, message: validation.error || 'Error de validación', severity: 'error' });
-      return;
-    }
-
-    if (multimedia.length >= 6) {
+    if (multimedia.length + files.length > 6) {
       setSnackbar({ open: true, message: 'No puedes subir más de 6 imágenes', severity: 'error' });
       return;
     }
 
     setSaving(true); // Muestra el spinner
     try {
-      // 1. Subir a Cloudinary
-      const uploadedImage = await uploadService.uploadImage(file);
-      
-      // 2. Añadir al backend
-      await publicacionesService.addMultimedia(publicacion.id!, {
-        url: uploadedImage.url,
-        orden: multimedia.length,
-        tipo: 'imagen',
+      const uploadPromises = Array.from(files).map((file) => {
+        const validation = uploadService.validateImage(file);
+        if (!validation.valid) {
+          setSnackbar({ open: true, message: validation.error || 'Error de validación', severity: 'error' });
+          return Promise.reject(validation.error || 'Error de validación');
+        }
+        return uploadService.uploadImage(file);
       });
 
-      setSnackbar({ open: true, message: 'Imagen agregada exitosamente', severity: 'success' });
-      await loadPublicacion(); // Recarga la publicación para mostrar la nueva imagen
+      const uploadedImages = await Promise.all(uploadPromises);
+
+      // Añadir las imágenes al backend
+      const multimediaToAdd = uploadedImages.map((uploadedImage, index) => ({
+        url: uploadedImage.url,
+        orden: multimedia.length + index,
+        tipo: 'imagen',
+      }));
+
+      // Guardar las nuevas imágenes en el backend
+      await Promise.all(
+        multimediaToAdd.map((item) => publicacionesService.addMultimedia(publicacion.id!, item))
+      );
+
+      setSnackbar({ open: true, message: 'Imágenes agregadas exitosamente', severity: 'success' });
+      await loadPublicacion(); // Recarga la publicación para mostrar las nuevas imágenes
 
     } catch (error) {
-      console.error("Error al subir imagen:", error);
-      setSnackbar({ open: true, message: 'Error al agregar la imagen', severity: 'error' });
+      console.error("Error al subir imágenes:", error);
+      setSnackbar({ open: true, message: 'Error al agregar las imágenes', severity: 'error' });
     } finally {
       setSaving(false);
       if (fileInputRef.current) fileInputRef.current.value = ''; // Limpia el input
@@ -297,6 +301,7 @@ const EditPublicacion = () => {
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         style={{ display: 'none' }}
         onChange={handleNewFilesSelected}
       />
