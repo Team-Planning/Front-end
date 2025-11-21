@@ -26,6 +26,7 @@ import {
   AddPhotoAlternate as AddPhotoIcon,
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
 import publicacionesService, { Publicacion, UpdatePublicacionDto, Multimedia } from '../../services/publicaciones.service';
 import uploadService from '../../services/upload.service'; // <-- AÑADIDO
 
@@ -181,7 +182,7 @@ const EditPublicacion = () => {
       setSaving(true); // Muestra spinner
       // Marca la multimedia como eliminada localmente y marca la publicación como eliminada localmente
       // IMPORTANTE: pasar 'false' para evitar marcar la publicación como eliminada
-      publicacionesService.deleteMultimedia(multimediaToDelete.id, publicacion?.id, false)
+        publicacionesService.deleteMultimedia(multimediaToDelete.id, publicacion?.id, false)
         .then(() => {
           // Actualizar estado localmente para eliminar solo la imagen seleccionada
           setMultimedia((prev) => prev.filter((m) => m.id !== multimediaToDelete.id));
@@ -191,7 +192,7 @@ const EditPublicacion = () => {
             if (newLength === 0) return 0;
             return Math.min(prevIdx, newLength - 1);
           });
-          setSnackbar({ open: true, message: 'Imagen eliminada correctamente', severity: 'success' });
+          // No mostrar snackbar de éxito para esta acción (solo eliminar silenciosamente)
         })
         .catch((error) => {
           console.error('Error al eliminar multimedia:', error);
@@ -372,22 +373,6 @@ const EditPublicacion = () => {
           <Button
             variant="outlined"
             size="small"
-            onClick={() => handleRemoveImage(currentImageIndex)}
-            disabled={saving || multimedia.length === 0}
-            sx={{
-              borderColor: '#EF5350',
-              color: '#EF5350',
-              borderRadius: '20px',
-              textTransform: 'none',
-              '&:hover': { borderColor: '#E53935', backgroundColor: '#FFEBEE' },
-            }}
-          >
-            Eliminar foto
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
             onClick={async () => {
               if (!publicacion || !multimedia[currentImageIndex]?.id) return;
               setSaving(true);
@@ -429,6 +414,22 @@ const EditPublicacion = () => {
                     objectFit: 'contain',
                   }}
                 />
+                {/* X eliminar (sin confirmación) */}
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); handleRemoveImage(currentImageIndex); }}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    zIndex: 20,
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    color: '#D32F2F',
+                    '&:hover': { backgroundColor: 'white' },
+                  }}
+                  size="small"
+                >
+                  <CloseIcon />
+                </IconButton>
                 {/* Eliminar la X aquí */}
                 <Box sx={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 1, alignItems: 'center' }}>
                   {multimedia[currentImageIndex]?.eliminado && (
