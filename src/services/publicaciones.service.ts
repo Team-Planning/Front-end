@@ -49,6 +49,12 @@ type GetAllOpts = {
 class PublicacionesService {
   private notifyListChanged() {
     localStorage.setItem('publicaciones-update', Date.now().toString());
+    try {
+      // Emitir un evento global para que las vistas puedan refrescarse
+      window.dispatchEvent(new Event('publicaciones:update'));
+    } catch (e) {
+      // ignore (server-side rendering guard)
+    }
   }
 
   async getAll(opts?: GetAllOpts): Promise<Publicacion[]> {

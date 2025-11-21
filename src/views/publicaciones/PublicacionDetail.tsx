@@ -80,6 +80,18 @@ const PublicacionDetail = () => {
     if (id) {
       loadPublicacion();
     }
+    const onUpdate = () => {
+      if (id) loadPublicacion();
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'publicaciones-update' && id) loadPublicacion();
+    };
+    window.addEventListener('publicaciones:update', onUpdate);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('publicaciones:update', onUpdate);
+      window.removeEventListener('storage', onStorage);
+    };
   }, [id]);
 
   const loadPublicacion = async () => {
@@ -392,24 +404,6 @@ const PublicacionDetail = () => {
             }}
           >
             Editar Publicación
-          </Button>
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<DeleteIcon />}
-            onClick={() => setDeleteDialogOpen(true)}
-            sx={{
-              backgroundColor: '#EF5350',
-              borderRadius: '25px',
-              py: 1.5,
-              fontWeight: 'bold',
-              textTransform: 'none',
-              '&:hover': {
-                backgroundColor: '#E53935',
-              },
-            }}
-          >
-            Eliminar
           </Button>
         </Box>
       </Box>

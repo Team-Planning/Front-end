@@ -74,6 +74,16 @@ export default function PublicacionesList() {
 
   useEffect(() => {
     loadPublicaciones();
+    const onUpdate = () => loadPublicaciones();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'publicaciones-update') loadPublicaciones();
+    };
+    window.addEventListener('publicaciones:update', onUpdate);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('publicaciones:update', onUpdate);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   // leer mapa local de extras (precio y categoria) una vez al render
