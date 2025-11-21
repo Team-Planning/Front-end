@@ -77,6 +77,22 @@ const EditPublicacion = () => {
     try {
       setLoading(true);
       const data = await publicacionesService.getById(id!);
+      // Si la publicación está marcada como eliminada en localStorage, restaurarla localmente
+      const estado = (data.estado || '').toString().toLowerCase();
+      if (estado.includes('elimin')) {
+        try {
+          await publicacionesService.restorePublicationLocal(data.id!);
+          // Volver a obtener la publicación ya restaurada
+          const refreshed = await publicacionesService.getById(id!);
+          setPublicacion(refreshed);
+          setMultimedia(refreshed.multimedia || []);
+          setSnackbar({ open: true, message: 'Publicación restaurada localmente para edición', severity: 'success' });
+          return;
+        } catch (e) {
+          console.warn('No se pudo restaurar localmente la publicación:', e);
+          // caerá al flujo normal y se mostrará la publicación tal cual
+        }
+      }
       setPublicacion(data);
       setFormData({
         titulo: data.titulo,
@@ -164,10 +180,17 @@ const EditPublicacion = () => {
     if (multimediaToDelete.id) {
       setSaving(true); // Muestra spinner
       // Marca la multimedia como eliminada localmente y marca la publicación como eliminada localmente
-      publicacionesService.deleteMultimedia(multimediaToDelete.id, publicacion?.id)
+      // IMPORTANTE: pasar 'false' para evitar marcar la publicación como eliminada
+      publicacionesService.deleteMultimedia(multimediaToDelete.id, publicacion?.id, false)
         .then(() => {
-          // Recargar publicación para mantener consistencia con backend
-          loadPublicacion();
+          // Actualizar estado localmente para eliminar solo la imagen seleccionada
+          setMultimedia((prev) => prev.filter((m) => m.id !== multimediaToDelete.id));
+          // Ajustar índice actual si es necesario
+          setCurrentImageIndex((prevIdx) => {
+            const newLength = Math.max(0, multimedia.length - 1);
+            if (newLength === 0) return 0;
+            return Math.min(prevIdx, newLength - 1);
+          });
           setSnackbar({ open: true, message: 'Imagen eliminada correctamente', severity: 'success' });
         })
         .catch((error) => {
@@ -178,6 +201,41 @@ const EditPublicacion = () => {
           setSaving(false); // Oculta spinner
         });
     }
+  };
+
+  // Drag & drop handlers for reordering thumbnails
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const fromStr = e.dataTransfer.getData('text/plain');
+    const from = Number(fromStr);
+    if (Number.isNaN(from)) return;
+    if (from === index) return;
+
+    setMultimedia((prev) => {
+      const copy = [...prev];
+      const [moved] = copy.splice(from, 1);
+      copy.splice(index, 0, moved);
+      // Persist new order (only ids) locally
+      if (publicacion?.id) {
+        const ids = copy.map((m) => m.id).filter((x): x is string => !!x);
+        if (ids.length > 0) publicacionesService.setMultimediaOrderLocal(publicacion.id, ids);
+      }
+      return copy;
+    });
+
+    // After reorder, set current image to the dropped position
+    setCurrentImageIndex(index);
+    setSnackbar({ open: true, message: 'Orden de imágenes actualizado', severity: 'success' });
   };
 
   const validateForm = (): boolean => {
@@ -399,7 +457,11 @@ const EditPublicacion = () => {
           <Box sx={{ p: 2, display: 'flex', gap: 1, overflowX: 'auto' }}>
             {multimedia.map((img, index) => (
               <Box
-                key={index}
+                key={img.id ?? index}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, index)}
                 onClick={() => setCurrentImageIndex(index)}
                 sx={{
                   width: 70,
@@ -409,7 +471,9 @@ const EditPublicacion = () => {
                   borderColor: currentImageIndex === index ? 'primary.main' : 'transparent',
                   borderRadius: 1,
                   overflow: 'hidden',
-                  cursor: 'pointer',
+                  cursor: 'grab',
+                  position: 'relative',
+                  '&:active': { cursor: 'grabbing' },
                 }}
               >
                 <img

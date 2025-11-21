@@ -61,10 +61,12 @@ class PublicacionesService {
     const deletedMap = this._readDeletedMap();
     const estadoMap = this._readEstadoMap();
     const portadaMap = this._readPortadaMap();
+    const orderMap = this._readOrderMap();
     data = data.map((p) => {
       let withFlags = this._applyDeletedFlags(p, deletedMap);
       const withEstado = this._applyEstadoOverride(withFlags, estadoMap);
-      return this._applyPortadaOverride(withEstado, portadaMap);
+      const withOrder = this._applyOrderOverride(withEstado, orderMap);
+      return this._applyPortadaOverride(withOrder, portadaMap);
     });
 
     if (opts?.includeEliminadas) return data;
@@ -79,7 +81,9 @@ class PublicacionesService {
     const portadaMap = this._readPortadaMap();
     const withFlags = this._applyDeletedFlags(pub, deletedMap);
     const withEstado = this._applyEstadoOverride(withFlags, estadoMap);
-    return this._applyPortadaOverride(withEstado, portadaMap);
+    const orderMap = this._readOrderMap();
+    const withOrder = this._applyOrderOverride(withEstado, orderMap);
+    return this._applyPortadaOverride(withOrder, portadaMap);
   }
 
   async create(data: CreatePublicacionDto): Promise<Publicacion> {
@@ -137,6 +141,7 @@ class PublicacionesService {
   private _deletedMapKey = 'publicacion_multimedia_deleted_v1';
   private _estadoOverrideKey = 'publicacion_estado_override_v1';
   private _portadaKey = 'publicacion_portada_v1';
+  private _orderKey = 'publicacion_multimedia_order_v1';
 
   private _readPortadaMap(): Record<string, string> {
     try {
@@ -179,6 +184,58 @@ class PublicacionesService {
       const [sel] = copy.splice(idx, 1);
       copy.unshift(sel);
       return { ...pub, multimedia: copy };
+    } catch (e) {
+      return pub;
+    }
+  }
+
+  private _readOrderMap(): Record<string, string[]> {
+    try {
+      const raw = localStorage.getItem(this._orderKey);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  private _writeOrderMap(m: Record<string, string[]>) {
+    try {
+      localStorage.setItem(this._orderKey, JSON.stringify(m));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async setMultimediaOrderLocal(publicacionId: string, orderedIds: string[]) {
+    try {
+      const map = this._readOrderMap();
+      map[publicacionId] = orderedIds;
+      this._writeOrderMap(map);
+      this.notifyListChanged();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private _applyOrderOverride(pub: Publicacion, orderMap: Record<string, string[]>): Publicacion {
+    try {
+      if (!pub || !pub.id || !pub.multimedia || pub.multimedia.length === 0) return pub;
+      const order = orderMap[pub.id];
+      if (!order || order.length === 0) return pub;
+      const idToMult = pub.multimedia.reduce<Record<string, Multimedia>>((acc, m) => {
+        if (m.id) acc[m.id] = m;
+        return acc;
+      }, {});
+      const ordered: Multimedia[] = [];
+      for (const mid of order) {
+        if (idToMult[mid]) {
+          ordered.push(idToMult[mid]);
+          delete idToMult[mid];
+        }
+      }
+      const remaining = pub.multimedia.filter((m) => m.id && idToMult[m.id!]);
+      return { ...pub, multimedia: [...ordered, ...remaining] };
     } catch (e) {
       return pub;
     }
