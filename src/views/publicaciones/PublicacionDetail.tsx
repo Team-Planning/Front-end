@@ -21,9 +21,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Share as ShareIcon,
-  MoreVert as MoreVertIcon,
-  ChevronLeft as ChevronLeftIcon, // <-- AÑADIDO para galería
-  ChevronRight as ChevronRightIcon, // <-- AÑADIDO para galería
+  ChevronLeft as ChevronLeftIcon,  // <-- AÑADIDO
+  ChevronRight as ChevronRightIcon,  // <-- AÑADIDO
   PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
@@ -58,7 +57,6 @@ const ESTADO_COLORS: Record<string, string> = {
   ELIMINADO: '#EF9A9A',
 };
 
-
 const normalizeEstadoKey = (estado?: string) => (estado ?? 'EN_REVISION').toString().toUpperCase().replace(/[_\s]/g, '');
 const formatEstadoLabel = (estado?: string) => {
   const text = (estado ?? 'EN_REVISION').toString().replace(/_/g, ' ');
@@ -88,7 +86,7 @@ const PublicacionDetail = () => {
     try {
       setLoading(true);
       const data = await publicacionesService.getById(id!);
-    console.log('Publicacion fetched:', data);
+      console.log('Publicacion fetched:', data);
       setPublicacion(data);
       // Asegurarse de que el índice no exceda el número de imágenes si hay cambios
       if (data.multimedia && currentImageIndex >= data.multimedia.length) {

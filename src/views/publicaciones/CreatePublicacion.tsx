@@ -131,9 +131,15 @@ const CreatePublicacion = () => {
   };
 
   const onSubmit = async (data: any) => {
-    // data contains titulo, descripcion, categoriaMock, precio
+    // Asegurarse de que al menos haya 1 imagen
     if (images.length === 0) {
       setSnackbar({ open: true, message: 'Debes agregar al menos una imagen', severity: 'error' });
+      return;
+    }
+
+    // Asegurarse de que no se superen las 6 imágenes
+    if (images.length > 6) {
+      setSnackbar({ open: true, message: 'Solo puedes subir un máximo de 6 imágenes', severity: 'error' });
       return;
     }
 
@@ -179,7 +185,7 @@ const CreatePublicacion = () => {
       }
 
       reset();
-      setImages([]);
+      setImages([]);  // Limpia las imágenes cargadas
       setTimeout(() => navigate(`/publicaciones/${publicacion.id}`), 1500);
     } catch (error: any) {
       console.error('Error al crear publicación:', error);
@@ -428,14 +434,13 @@ const CreatePublicacion = () => {
             />
           </Box>
 
-
           {/* Botón Subir */}
           <Button
             fullWidth
             variant="contained"
             onClick={handleSubmit(onSubmit)}
             disabled={loading || images.length === 0}
-              sx={{
+            sx={{
               backgroundColor: 'primary.main',
               color: 'primary.contrastText',
               '&:hover': { backgroundColor: 'primary.dark' },

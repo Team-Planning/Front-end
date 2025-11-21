@@ -19,16 +19,14 @@ import {
   DialogContentText,
   DialogActions,
   InputLabel,
-  CircularProgress, // <-- AÑADIDO
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  Close as CloseIcon,
   AddPhotoAlternate as AddPhotoIcon,
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion, UpdatePublicacionDto, Multimedia } from '../../services/publicaciones.service';
-// import categoriasService, { Categoria } from '../../services/categorias.service'; // <-- ELIMINADO
 import uploadService from '../../services/upload.service'; // <-- AÑADIDO
 
 // ==================================================================
@@ -43,14 +41,12 @@ const mockCategorias = [
 ];
 // ==================================================================
 
-
 const EditPublicacion = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null); // <-- AÑADIDO
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  // const [categorias, setCategorias] = useState<Categoria[]>([]); // <-- ELIMINADO
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [multimedia, setMultimedia] = useState<Multimedia[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -72,13 +68,10 @@ const EditPublicacion = () => {
   });
 
   useEffect(() => {
-    // loadCategorias(); // <-- ELIMINADO
     if (id) {
       loadPublicacion();
     }
   }, [id]);
-
-  // const loadCategorias = async () => { ... }; // <-- ELIMINADA TODA LA FUNCIÓN
 
   const loadPublicacion = async () => {
     try {
@@ -290,7 +283,7 @@ const EditPublicacion = () => {
   return (
     <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
       {/* Header con fondo theme - full-bleed (compensa padding del layout) */}
-        <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
+      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
         <IconButton onClick={() => navigate(`/publicaciones/${id}`)} sx={{ color: 'primary.contrastText', mr: 2 }}>
           <ArrowBackIcon />
         </IconButton>
@@ -373,19 +366,7 @@ const EditPublicacion = () => {
                     objectFit: 'contain',
                   }}
                 />
-                <IconButton
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    color: 'white',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
-                  }}
-                  onClick={() => handleRemoveImage(currentImageIndex)}
-                >
-                  <CloseIcon />
-                </IconButton>
+                {/* Eliminar la X aquí */}
                 <Box sx={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 1, alignItems: 'center' }}>
                   {multimedia[currentImageIndex]?.eliminado && (
                     <>
@@ -397,8 +378,6 @@ const EditPublicacion = () => {
                       </Button>
                     </>
                   )}
-
-                  {/* No 'Definir como portada' aquí; el botón superior es la fuente de verdad */}
                 </Box>
               </>
             ) : (
