@@ -1,5 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+// ==========================================
+// CreatePublicacion.tsx — PULGASHOP FRONT
+// ==========================================
+
+import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   Box,
   Card,
@@ -15,131 +20,177 @@ import {
   LinearProgress,
   CircularProgress,
   InputLabel,
-} from '@mui/material';
+  Chip,
+  Stack,
+} from "@mui/material";
+
 import {
   ArrowBack as ArrowBackIcon,
   Close as CloseIcon,
-  AddPhotoAlternate as AddPhotoIcon,
+  AddPhotoAlternate as AddPhotoAlternateIcon,
   CheckCircle as CheckIcon,
   CloudUpload as CloudUploadIcon,
-} from '@mui/icons-material';
-import publicacionesService, { CreatePublicacionDto, Multimedia } from '../../services/publicaciones.service';
-import uploadService, { CloudinaryUploadResult } from '../../services/upload.service';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+} from "@mui/icons-material";
 
+import publicacionesService from "../../services/publicaciones.service";
+import { Multimedia } from "../../services/publicaciones.service";
+
+import uploadService, {
+  CloudinaryUploadResult,
+} from "../../services/upload.service";
+
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+// ===============================================
+// MOCKS TEMPORALES
+// ===============================================
+const mockCategorias = [
+  { id: "tec", nombre: "Tecnología" },
+  { id: "rop", nombre: "Ropa y Accesorios" },
+  { id: "hog", nombre: "Hogar y Muebles" },
+  { id: "lib", nombre: "Libros y Apuntes" },
+  { id: "otr", nombre: "Otros" },
+];
+
+const mockProductos = {
+  tec: [
+    { id: "p1", nombre: "Monitor 24”" },
+    { id: "p2", nombre: "Teclado Mecánico" },
+    { id: "p3", nombre: "Mouse Gamer RGB" },
+  ],
+  rop: [
+    { id: "p4", nombre: "Polerón Oversize" },
+    { id: "p5", nombre: "Pantalones Cargo" },
+    { id: "p6", nombre: "Chaqueta Denim" },
+  ],
+  hog: [
+    { id: "p7", nombre: "Silla de Oficina" },
+    { id: "p8", nombre: "Vaso térmico" },
+  ],
+  lib: [
+    { id: "p9", nombre: "Libro Cálculo UV" },
+    { id: "p10", nombre: "Apuntes Física I" },
+  ],
+  otr: [{ id: "p11", nombre: "Producto Genérico" }],
+};
+
+// ===============================================
+// TIPOS
+// ===============================================
 interface ImagePreview {
   file: File;
   preview: string;
   cloudinaryData?: CloudinaryUploadResult;
 }
 
-// MOCK DE CATEGORÍAS (Solo Frontend)
-const mockCategorias = [
-  { id: 'tec', nombre: 'Tecnología' },
-  { id: 'rop', nombre: 'Ropa y Accesorios' },
-  { id: 'hog', nombre: 'Hogar y Muebles' },
-  { id: 'lib', nombre: 'Libros y Apuntes' },
-  { id: 'otr', nombre: 'Otros' },
-];
+// ===============================================
+// VALIDACIÓN
+// ===============================================
+const schema = yup.object({
+  categoria: yup.string().required("Selecciona una categoría"),
+  producto: yup.string().required("Selecciona un producto asociado"),
+  titulo: yup.string().required().min(5, "Mínimo 5 caracteres"),
+  descripcion: yup.string().required().min(10, "Mínimo 10 caracteres"),
+  stock: yup.number().required().min(1),
+  tipoEntrega: yup
+    .array()
+    .of(yup.string())
+    .min(1, "Selecciona al menos un método de entrega"),
+  precio: yup.number().required().min(0),
+});
 
+// ===============================================
+// COMPONENTE PRINCIPAL
+// ===============================================
 const CreatePublicacion = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
+
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
-  
-  // Form validation schema
-  const schema = yup.object({
-    titulo: yup.string().required('El título es obligatorio').min(5, 'El título debe tener al menos 5 caracteres'),
-    descripcion: yup.string().required('La descripción es obligatoria').min(10, 'La descripción debe tener al menos 10 caracteres'),
-    categoriaMock: yup.string().required('Debes seleccionar una categoría'),
-    precio: yup.number().typeError('El precio debe ser un número').required('El precio es obligatorio').min(0, 'El precio no puede ser negativo'),
-  }).required();
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const { register, control, handleSubmit, watch, formState: { errors: formErrors }, reset } = useForm<any>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      titulo: '',
-      descripcion: '',
-      categoriaMock: '',
-      precio: '',
-    }
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "warning",
   });
 
-  useEffect(() => {
-    return () => {
-      images.forEach(img => URL.revokeObjectURL(img.preview));
-    };
-  }, [images]);
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<any>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      categoria: "",
+      producto: "",
+      titulo: "",
+      descripcion: "",
+      stock: "",
+      tipoEntrega: [],
+      precio: "",
+    },
+  });
 
-  // react-hook-form will handle inputs; keep this for legacy uses if needed
+  // Tipado corregido
+  const categoriaSeleccionada: keyof typeof mockProductos =
+    watch("categoria") || "tec";
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  // =====================================================
+  // MANEJO DE IMÁGENES
+  // =====================================================
+  const handleFileSelect = (e: any) => {
+    const files = e.target.files as FileList;
+    if (!files) return;
 
-    const fileArray = Array.from(files);
-    
-    if (images.length + fileArray.length > 6) {
-      setSnackbar({ 
-        open: true, 
-        message: 'No puedes subir más de 6 imágenes en total', 
-        severity: 'error' 
+    const limit = 6 - images.length;
+    const list: File[] = Array.from(files).slice(0, limit);
+
+    const valid = uploadService.validateMultipleImages(list, limit);
+    if (!valid.valid) {
+      setSnackbar({
+        open: true,
+        message: valid.error!,
+        severity: "error",
       });
       return;
     }
 
-    const validation = uploadService.validateMultipleImages(fileArray, 6 - images.length);
-    if (!validation.valid) {
-      setSnackbar({ open: true, message: validation.error || 'Error en validación', severity: 'error' });
-      return;
-    }
-
-    const newImages: ImagePreview[] = fileArray.map(file => ({
+    const arr = list.map((file: File) => ({
       file,
       preview: URL.createObjectURL(file),
     }));
 
-    setImages([...images, ...newImages]);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    setImages([...images, ...arr]);
+    e.target.value = "";
+  };
+
+  const removeImage = (i: number) => {
+    URL.revokeObjectURL(images[i].preview);
+    const arr = images.filter((_, idx) => idx !== i);
+    setImages(arr);
+    if (currentImageIndex >= arr.length) {
+      setCurrentImageIndex(arr.length - 1);
     }
   };
 
-  const handleAddImageClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleRemoveImage = (index: number) => {
-    const imageToRemove = images[index];
-    URL.revokeObjectURL(imageToRemove.preview);
-    
-    const newImages = images.filter((_, i) => i !== index);
-    setImages(newImages);
-    
-    if (currentImageIndex >= newImages.length && newImages.length > 0) {
-      setCurrentImageIndex(newImages.length - 1);
-    } else if (newImages.length === 0) {
-      setCurrentImageIndex(0);
-    }
-  };
-
+  // =====================================================
+  // SUBMIT
+  // =====================================================
   const onSubmit = async (data: any) => {
-    // Asegurarse de que al menos haya 1 imagen
     if (images.length === 0) {
-      setSnackbar({ open: true, message: 'Debes agregar al menos una imagen', severity: 'error' });
-      return;
-    }
-
-    // Asegurarse de que no se superen las 6 imágenes
-    if (images.length > 6) {
-      setSnackbar({ open: true, message: 'Solo puedes subir un máximo de 6 imágenes', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "Debes agregar al menos una imagen",
+        severity: "error",
+      });
       return;
     }
 
@@ -147,368 +198,358 @@ const CreatePublicacion = () => {
       setLoading(true);
       setUploadingImages(true);
 
-      const filesToUpload = images.map(img => img.file);
-      const uploadedImages = await uploadService.uploadMultipleImages(filesToUpload);
+      const uploaded = await uploadService.uploadMultipleImages(
+        images.map((x) => x.file)
+      );
 
       setUploadingImages(false);
 
-      const multimedia: Multimedia[] = uploadedImages.map((img, index) => ({
-        url: img.url,
-        cloudinaryPublicId: img.publicId,
-        orden: index + 1,
-        tipo: 'imagen',
+      const multimedia: Multimedia[] = uploaded.map((f, i) => ({
+        url: f.url,
+        orden: i + 1,
+        tipo: "imagen",
       }));
 
-      const dto: CreatePublicacionDto = {
-        id_vendedor: 'vendedor_demo_001',
-        id_producto: 'producto_demo_001',
+      // Guardado extra local y NO enviado al backend
+      const extras = {
+        categoria: data.categoria,
+        producto: data.producto,
+        stock: data.stock,
+        tipoEntrega: data.tipoEntrega,
+      };
+
+      localStorage.setItem("publicacion_local_extra", JSON.stringify(extras));
+
+      const dto = {
+        id_vendedor: "demoStore123",
+        id_producto: data.producto,
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: Number(data.precio),
         multimedia,
       };
 
-      const publicacion = await publicacionesService.create(dto);
-      setSnackbar({ open: true, message: '¡Tu publicación fue enviada a revisión!', severity: 'warning' });
-      // Guardar datos mock-local (precio y categoría) para que la vista detalle los muestre
-      try {
-        const key = 'publicacion_extras';
-        const raw = localStorage.getItem(key);
-        const map = raw ? JSON.parse(raw) : {};
-        map[String(publicacion.id)] = {
-          precio: Number(data.precio),
-          categoriaMock: data.categoriaMock,
-        };
-        localStorage.setItem(key, JSON.stringify(map));
-      } catch (e) {
-        console.warn('No se pudo guardar publicacion_extras en localStorage', e);
-      }
+      await publicacionesService.create(dto, extras);
+
+      setSnackbar({
+        open: true,
+        message: "¡Tu publicación fue enviada!",
+        severity: "success",
+      });
 
       reset();
-      setImages([]);  // Limpia las imágenes cargadas
-      setTimeout(() => navigate(`/publicaciones/${publicacion.id}`), 1500);
-    } catch (error: any) {
-      console.error('Error al crear publicación:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Ocurrió un error inesperado al crear la publicación.';
-      setSnackbar({ open: true, message: `⚠️ ${Array.isArray(errorMessage) ? errorMessage[0] : errorMessage}`, severity: 'error' });
+      setImages([]);
+
+      setTimeout(() => navigate("/publicaciones"), 1000);
+    } catch (e) {
+      setSnackbar({
+        open: true,
+        message: "Error al crear la publicación",
+        severity: "error",
+      });
     } finally {
       setLoading(false);
       setUploadingImages(false);
     }
   };
 
+  // =====================================================
+  // UI
+  // =====================================================
   return (
-    <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
-      {/* Header con fondo del theme - full-bleed (compensa padding del layout) */}
-      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
-        <IconButton onClick={() => navigate('/publicaciones')} sx={{ color: 'white', mr: 2 }}>
+    <Box sx={{ minHeight: "100vh", pb: 4, background: "#fff" }}>
+      <Box
+        sx={{
+          backgroundColor: "primary.main",
+          color: "white",
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <IconButton
+          onClick={() => navigate("/publicaciones")}
+          sx={{ color: "white", mr: 2 }}
+        >
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+
+        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
           Añadir Publicación
         </Typography>
       </Box>
 
       {loading && <LinearProgress />}
 
-      <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
+      <Box sx={{ maxWidth: 600, mx: "auto", p: 2 }}>
+        {/* INPUT FILE */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           onChange={handleFileSelect}
         />
 
-        {/* Galería de Imágenes */}
-        <Card sx={{ mb: 2, borderRadius: 2, overflow: 'hidden' }}>
-          <Box sx={{ position: 'relative', backgroundColor: '#E0E0E0', height: 300 }}>
+        {/* GALERÍA */}
+        <Card sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
+          <Box sx={{ position: "relative", height: 280, background: "#eee" }}>
             {images.length > 0 ? (
               <>
                 <img
                   src={images[currentImageIndex].preview}
-                  alt={`Imagen ${currentImageIndex + 1}`}
-                  loading="lazy"
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
                   }}
                 />
+
                 <IconButton
+                  onClick={() => removeImage(currentImageIndex)}
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 8,
                     right: 8,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    color: 'white',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    color: "white",
                   }}
-                  onClick={() => handleRemoveImage(currentImageIndex)}
-                  disabled={loading}
                 >
                   <CloseIcon />
                 </IconButton>
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 8,
-                    left: 8,
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    color: 'white',
-                    px: 1,
-                    py: 0.5,
-                    borderRadius: 1,
-                  }}
-                >
-                  <Typography variant="caption">
-                    {(images[currentImageIndex].file.size / 1024 / 1024).toFixed(2)} MB
-                  </Typography>
-                </Box>
               </>
             ) : (
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '100%',
-                  cursor: 'pointer',
+              <Box
+                onClick={() => fileInputRef.current?.click()}
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  cursor: "pointer",
                 }}
-                onClick={handleAddImageClick}
               >
-                <CloudUploadIcon sx={{ fontSize: 64, color: '#9E9E9E', mb: 2 }} />
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-                  Click para agregar imágenes
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Máximo 6 imágenes, 5MB cada una
-                </Typography>
+                <CloudUploadIcon sx={{ fontSize: 58, color: "#999", mb: 1 }} />
+                <Typography>Click para agregar imágenes</Typography>
+                <Typography variant="caption">Máximo 6 imágenes</Typography>
               </Box>
             )}
           </Box>
-          <Box sx={{ p: 2, display: 'flex', gap: 1, overflowX: 'auto' }}>
-            {images.map((img, index) => (
+
+          {/* MINIATURAS */}
+          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", p: 1 }}>
+            {images.map((img, i) => (
               <Box
-                key={index}
-                onClick={() => setCurrentImageIndex(index)}
+                key={i}
+                onClick={() => setCurrentImageIndex(i)}
                 sx={{
-                  width: 70,
-                  height: 70,
-                  flexShrink: 0,
-                  border: currentImageIndex === index ? `2px solid` : '2px solid #E0E0E0',
-                  borderColor: currentImageIndex === index ? 'primary.main' : 'transparent',
+                  width: 68,
+                  height: 68,
                   borderRadius: 1,
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  position: 'relative',
+                  overflow: "hidden",
+                  border:
+                    currentImageIndex === i
+                      ? "2px solid #1976d2"
+                      : "1px solid #ccc",
+                  cursor: "pointer",
                 }}
               >
                 <img
                   src={img.preview}
-                  alt={`Thumbnail ${index + 1}`}
-                  loading="lazy"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
                 />
               </Box>
             ))}
+
             {images.length < 6 && (
               <Box
-                onClick={handleAddImageClick}
+                onClick={() => fileInputRef.current?.click()}
                 sx={{
-                  width: 70,
-                  height: 70,
-                  flexShrink: 0,
-                  border: '2px dashed',
-                  borderColor: 'primary.main',
+                  width: 68,
+                  height: 68,
+                  border: "2px dashed #1976d2",
                   borderRadius: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  backgroundColor: '#F5F5FF',
-                  '&:hover': { backgroundColor: '#E8F5E9' },
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  cursor: "pointer",
                 }}
               >
-                <AddPhotoIcon sx={{ color: 'primary.main' }} />
+                <AddPhotoAlternateIcon color="primary" />
               </Box>
             )}
           </Box>
-          <Box sx={{ textAlign: 'center', pb: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              {images.length > 0 ? `${currentImageIndex + 1}/${images.length}` : '0/6 imágenes'}
-            </Typography>
-            {uploadingImages && (
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                <CircularProgress size={16} />
-                <Typography variant="caption" color="primary">
-                  Subiendo imágenes a Cloudinary...
-                </Typography>
-              </Box>
-            )}
-          </Box>
+
+          <Typography
+            variant="caption"
+            sx={{
+              textAlign: "center",
+              display: "block",
+              pb: 1,
+              color: "#666",
+            }}
+          >
+            {images.length}/6 imágenes
+          </Typography>
         </Card>
 
-        {/* Formulario */}
-        <Card sx={{ p: 2, borderRadius: 2 }}>
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              label="TÍTULO"
-              {...register('titulo')}
-              error={!!formErrors.titulo}
-              helperText={String(formErrors.titulo?.message || `${(watch('titulo') || '').length}/80 caracteres`)}
-              inputProps={{ maxLength: 80 }}
-              InputProps={{
-                endAdornment: (watch('titulo') || '').length >= 5 && !formErrors.titulo && <CheckIcon sx={{ color: 'primary.main' }} />,
-              }}
-            />
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={4}
-              label="DESCRIPCIÓN"
-              {...register('descripcion')}
-              error={!!formErrors.descripcion}
-              helperText={String(formErrors.descripcion?.message || `${(watch('descripcion') || '').length}/500 caracteres`)}
-              inputProps={{ maxLength: 500 }}
-              InputProps={{
-                endAdornment: (watch('descripcion') || '').length >= 10 && !formErrors.descripcion && <CheckIcon sx={{ color: 'primary.main' }} />, 
-              }}
-            />
-          </Box>
-
-          {/* MOCK DE CATEGORÍAS */}
-          <Box sx={{ mb: 2 }}>
-            <FormControl fullWidth variant="outlined" error={!!formErrors.categoriaMock}>
-              <InputLabel id="categoria-mock-label">SELECCIONAR CATEGORÍA</InputLabel>
-              <Controller
-                name="categoriaMock"
-                control={control}
-                render={({ field }: { field: any }) => (
-                  <Select
-                    {...field}
-                    labelId="categoria-mock-label"
-                    label="SELECCIONAR CATEGORÍA"
-                  >
-                    <MenuItem value="" disabled>
-                      Selecciona una categoría
+        {/* FORMULARIO */}
+        <Card sx={{ p: 3, borderRadius: 2 }}>
+          {/* CATEGORÍA */}
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Categoría</InputLabel>
+            <Controller
+              name="categoria"
+              control={control}
+              render={({ field }) => (
+                <Select {...field} label="Categoría">
+                  {mockCategorias.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.nombre}
                     </MenuItem>
-                    {mockCategorias.map((cat) => (
-                      <MenuItem key={cat.id} value={cat.id}>
-                        {cat.nombre}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                )}
-              />
-              {formErrors.categoriaMock && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
-                  {String(formErrors.categoriaMock?.message)}
-                </Typography>
+                  ))}
+                </Select>
               )}
-            </FormControl>
-          </Box>
+            />
+          </FormControl>
+
+          {/* PRODUCTO */}
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Producto asociado</InputLabel>
+            <Controller
+              name="producto"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  label="Producto asociado"
+                  disabled={!watch("categoria")}
+                >
+                  {(mockProductos[categoriaSeleccionada] || []).map((p) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      {p.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+            />
+          </FormControl>
+
+          {/* TITULO */}
+          <TextField
+            label="Título del producto"
+            fullWidth
+            sx={{ mb: 2 }}
+            {...register("titulo")}
+            InputProps={{
+              endAdornment:
+                watch("titulo")?.length >= 5 && !errors.titulo ? (
+                  <CheckIcon color="success" />
+                ) : null,
+            }}
+          />
+
+          {/* DESCRIPCIÓN */}
+          <TextField
+            label="Descripción"
+            fullWidth
+            multiline
+            rows={3}
+            sx={{ mb: 2 }}
+            {...register("descripcion")}
+            InputProps={{
+              endAdornment:
+                watch("descripcion")?.length >= 10 &&
+                !errors.descripcion ? (
+                  <CheckIcon color="success" />
+                ) : null,
+            }}
+          />
+
+          {/* STOCK */}
+          <TextField
+            label="Stock"
+            type="number"
+            fullWidth
+            sx={{ mb: 3 }}
+            {...register("stock")}
+          />
+
+          {/* TIPO ENTREGA */}
+          <Typography sx={{ fontSize: 13, mb: 1, ml: 0.3 }}>
+            Tipo de entrega
+          </Typography>
+          <Controller
+            name="tipoEntrega"
+            control={control}
+            render={({ field }) => (
+              <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+                {["Presencial", "Envío"].map((op) => (
+                  <Chip
+                    key={op}
+                    label={op}
+                    clickable
+                    variant={
+                      field.value.includes(op) ? "filled" : "outlined"
+                    }
+                    color={
+                      field.value.includes(op) ? "primary" : "default"
+                    }
+                    onClick={() => {
+                      const exists = field.value.includes(op);
+                      const updated = exists
+                        ? field.value.filter((x: string) => x !== op)
+                        : [...field.value, op];
+                      field.onChange(updated);
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+          />
 
           {/* PRECIO */}
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              label="PRECIO"
-              type="number"
-              {...register('precio')}
-              error={!!formErrors.precio}
-              helperText={String(formErrors.precio?.message || '')}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-                endAdornment: watch('precio') && <CheckIcon sx={{ color: 'primary.main' }} />, 
-              }}
-            />
-          </Box>
+          <TextField
+            label="Precio"
+            type="number"
+            fullWidth
+            sx={{ mb: 3 }}
+            {...register("precio")}
+          />
 
-          {/* Botón Subir */}
           <Button
             fullWidth
             variant="contained"
-            onClick={handleSubmit(onSubmit)}
+            size="large"
             disabled={loading || images.length === 0}
-            sx={{
-              backgroundColor: 'primary.main',
-              color: 'primary.contrastText',
-              '&:hover': { backgroundColor: 'primary.dark' },
-              '&:disabled': { 
-                backgroundColor: '#BDBDBD',
-                color: '#757575' 
-              },
-              borderRadius: '25px',
-              py: 1.5,
-              fontSize: '16px',
-              fontWeight: 'bold',
-              textTransform: 'none',
-            }}
+            onClick={handleSubmit(onSubmit)}
           >
             {uploadingImages ? (
               <>
-                <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
+                <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
                 Subiendo imágenes...
               </>
-            ) : loading ? (
-              'Creando publicación...'
             ) : (
-              'Subir Publicación'
+              "PUBLICAR"
             )}
           </Button>
-          
-          {images.length === 0 && (
-            <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
-              Debes agregar al menos una imagen para crear la publicación
-            </Typography>
-          )}
         </Card>
       </Box>
 
-      {/* Snackbar (sin cambios) */}
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={8000}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert 
-          severity={snackbar.severity} 
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          sx={{
-            '&.MuiAlert-standardWarning': {
-              backgroundColor: '#FEF5D5',
-              color: '#664D03',
-              border: '1px solid rgba(102, 77, 3, 0.1)',
-              borderRadius: '8px',
-              '& .MuiAlert-icon': {
-                color: '#664D03'
-              }
-            },
-            fontSize: '1rem',
-            alignItems: 'center',
-            width: '100%',
-            maxWidth: '400px',
-            margin: '0 auto',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            '& .MuiAlert-message': {
-              padding: '10px 0',
-              fontWeight: '500'
-            }
-          }}
-        >
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
   );

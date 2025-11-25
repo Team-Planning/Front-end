@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
 import {
   Box,
   Card,
@@ -9,274 +10,267 @@ import {
   Chip,
   Alert,
   Snackbar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
   Skeleton,
-} from '@mui/material';
+} from "@mui/material";
+
 import {
   ArrowBack as ArrowBackIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   Share as ShareIcon,
-  ChevronLeft as ChevronLeftIcon,  // <-- AÑADIDO
-  ChevronRight as ChevronRightIcon,  // <-- AÑADIDO
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   PersonAdd as PersonAddIcon,
-} from '@mui/icons-material';
-import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
+} from "@mui/icons-material";
 
-// ==================================================================
-//  MOCK DE CATEGORÍAS (Solo Frontend) - Necesario para mostrar nombre
-// ==================================================================
+import publicacionesService, {
+  Publicacion,
+} from "../../services/publicaciones.service";
+
+// ==========================
+// CATEGORÍAS MOCK
+// ==========================
 const mockCategorias = [
-  { id: 'tec', nombre: 'Tecnología' },
-  { id: 'rop', nombre: 'Ropa y Accesorios' },
-  { id: 'hog', nombre: 'Hogar y Muebles' },
-  { id: 'lib', nombre: 'Libros y Apuntes' },
-  { id: 'otr', nombre: 'Otros' },
+  { id: "tec", nombre: "Tecnología" },
+  { id: "rop", nombre: "Ropa y Accesorios" },
+  { id: "hog", nombre: "Hogar y Muebles" },
+  { id: "lib", nombre: "Libros y Apuntes" },
+  { id: "otr", nombre: "Otros" },
 ];
 
-// Función para obtener el nombre de la categoría mock
 const getCategoriaNombre = (id: string) => {
-  const categoria = mockCategorias.find(cat => cat.id === id);
-  return categoria ? categoria.nombre : 'Categoría (Mock)';
+  const categoria = mockCategorias.find((cat) => cat.id === id);
+  return categoria ? categoria.nombre : "Categoría (Mock)";
 };
-// ==================================================================
 
-
-// Normalizamos las claves quitando espacios/guiones bajos y usando mayúsculas
+// ==========================
+// ESTADOS
+// ==========================
 const ESTADO_COLORS: Record<string, string> = {
-  ENREVISION: '#FFA726',
-  BORRADOR: '#757575',
-  ACTIVO: '#66BB6A',
-  PAUSADO: '#FFA726',
-  VENDIDO: '#42A5F5',
-  RECHAZADO: '#EF5350',
-  ELIMINADO: '#EF9A9A',
+  ENREVISION: "#FFA726",
+  BORRADOR: "#757575",
+  ACTIVO: "#66BB6A",
+  PAUSADO: "#FFA726",
+  VENDIDO: "#42A5F5",
+  RECHAZADO: "#EF5350",
+  ELIMINADO: "#EF9A9A",
 };
 
-const normalizeEstadoKey = (estado?: string) => (estado ?? 'EN_REVISION').toString().toUpperCase().replace(/[_\s]/g, '');
+const normalizeEstadoKey = (estado?: string) =>
+  (estado ?? "EN_REVISION")
+    .toUpperCase()
+    .replace(/[_\s]/g, "");
+
 const formatEstadoLabel = (estado?: string) => {
-  const text = (estado ?? 'EN_REVISION').toString().replace(/_/g, ' ');
+  const text = (estado ?? "EN_REVISION").toString().replace(/_/g, " ");
   return text
-    .split(' ')
+    .split(" ")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
+    .join(" ");
 };
 
+// ==========================
+// COMPONENTE
+// ==========================
 const PublicacionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error",
+  });
 
   useEffect(() => {
-    if (id) {
-      loadPublicacion();
-    }
-    const onUpdate = () => {
-      if (id) loadPublicacion();
-    };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'publicaciones-update' && id) loadPublicacion();
-    };
-    window.addEventListener('publicaciones:update', onUpdate);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('publicaciones:update', onUpdate);
-      window.removeEventListener('storage', onStorage);
-    };
+    if (id) loadPublicacion();
   }, [id]);
 
   const loadPublicacion = async () => {
     try {
       setLoading(true);
       const data = await publicacionesService.getById(id!);
-      console.log('Publicacion fetched:', data);
       setPublicacion(data);
-      // Asegurarse de que el índice no exceda el número de imágenes si hay cambios
-      if (data.multimedia && currentImageIndex >= data.multimedia.length) {
+
+      if (
+        data.multimedia &&
+        currentImageIndex >= data.multimedia.length
+      ) {
         setCurrentImageIndex(0);
       }
     } catch (error) {
-      console.error('Error al cargar publicación:', error);
-      setSnackbar({ open: true, message: 'Error al cargar la publicación', severity: 'error' });
+      console.error("Error al cargar:", error);
+      setSnackbar({
+        open: true,
+        message: "Error al cargar la publicación",
+        severity: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = () => {
-    // ==================================================================
-    // 🎨 ARREGLO:
-    // La ruta es 'editar' (con 'r') según tu archivo Routes.tsx
-    // ==================================================================
+ const handleEdit = () => {
     navigate(`/publicaciones/editar/${id}`);
   };
 
-  const handleDelete = async () => {
-    try {
-      setLoading(true);
-      await publicacionesService.cambiarEstado(id!, 'eliminado'); // enviar estado en minúscula esperado por backend
-      setSnackbar({
-        open: true,
-        message: 'Publicación movida a Eliminadas correctamente',
-        severity: 'success',
-      });
-      setTimeout(() => {
-        navigate('/publicaciones');
-      }, 1500);
-    } catch (error: any) {
-      console.error('Error al eliminar publicación:', error);
-      const msg =
-        error?.response?.data?.message ||
-        'Error al mover la publicación a Eliminadas.';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
-    } finally {
-      setLoading(false);
-      setDeleteDialogOpen(false);
-    }
-  };
-
-
   const handleShare = () => {
-    // Simular compartir
-    setSnackbar({ open: true, message: 'Enlace copiado al portapapeles', severity: 'success' });
+    setSnackbar({
+      open: true,
+      message: "Enlace copiado al portapapeles",
+      severity: "success",
+    });
   };
 
-  // ==================================================================
-  // 🎨 ARREGLO: Funciones para la galería de imágenes
-  // ==================================================================
-  const handleNextImage = () => {
-    if (publicacion && publicacion.multimedia && publicacion.multimedia.length > 0) {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % publicacion.multimedia!.length);
-    }
-  };
+  // =====================================================
+// NAVEGACIÓN DE IMÁGENES (CORREGIDO)
+// =====================================================
+const totalImages = publicacion?.multimedia?.length ?? 0;
 
-  const handlePrevImage = () => {
-    if (publicacion && publicacion.multimedia && publicacion.multimedia.length > 0) {
-      setCurrentImageIndex((prevIndex) => (prevIndex - 1 + publicacion.multimedia!.length) % publicacion.multimedia!.length);
-    }
-  };
-  // ==================================================================
+const handleNextImage = () => {
+  if (totalImages > 0) {
+    setCurrentImageIndex((prev) => (prev + 1) % totalImages);
+  }
+};
 
+const handlePrevImage = () => {
+  if (totalImages > 0) {
+    setCurrentImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
+  }
+};
+
+// =====================================================
+// LEER EXTRAS LOCALES (CORREGIDO)
+// =====================================================
+const extrasRaw = localStorage.getItem("publicacion_extras");
+const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
+
+  const localExtra =
+    extrasMap[String(publicacion?.id_producto)] || null;
 
   if (loading) {
     return (
       <Box sx={{ px: 3, py: 4 }}>
         <Skeleton variant="rectangular" height={350} />
-        <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-          <Skeleton width="40%" height={36} sx={{ mt: 2 }} />
-          <Skeleton width="80%" height={16} sx={{ mt: 1 }} />
-          <Skeleton width="100%" height={120} sx={{ mt: 2 }} />
-        </Box>
+        <Skeleton height={30} sx={{ mt: 2, width: "60%" }} />
+        <Skeleton height={20} sx={{ mt: 1, width: "80%" }} />
+        <Skeleton height={120} sx={{ mt: 2 }} />
       </Box>
     );
   }
 
   if (!publicacion) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <Typography>Publicación no encontrada</Typography>
       </Box>
     );
   }
 
   const multimedia = publicacion.multimedia || [];
-  // Mostrar solo multimedia que no estén marcadas como eliminadas
-  const visibleMultimedia = multimedia.filter((m) => !m.eliminado);
-  const hasMultipleImages = visibleMultimedia.length > 1;
-
-  // Leer valores mock guardados localmente (precio, categoria) si existen
-  const extrasRaw = typeof window !== 'undefined' ? localStorage.getItem('publicacion_extras') : null;
-  const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
-  const localExtra = extrasMap[String(publicacion.id)] || null;
+  const hasMultipleImages = multimedia.length > 1;
 
   return (
-    <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
-      {/* Header con fondo theme - full-bleed (compensa padding del layout) */}
-      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton onClick={() => navigate('/publicaciones')} sx={{ color: 'white', mr: 2 }}>
+    <Box sx={{ backgroundColor: "#fff", minHeight: "100vh", pb: 3 }}>
+      {/* HEADER */}
+      <Box
+        sx={{
+          backgroundColor: "primary.main",
+          color: "white",
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "calc(100% + 48px)",
+          marginLeft: "-24px",
+          marginRight: "-24px",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <IconButton
+            onClick={() => navigate("/publicaciones")}
+            sx={{ color: "white", mr: 2 }}
+          >
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
             Detalle de publicación
           </Typography>
         </Box>
-        {/* Overflow menu removed per request */}
       </Box>
 
-      <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-        {/* Galería de Imágenes */}
-        <Card sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-          <Box sx={{ position: 'relative', backgroundColor: '#E0E0E0', height: 350 }}>
-            {visibleMultimedia.length > 0 ? (
+      <Box sx={{ maxWidth: 600, mx: "auto", p: 2 }}>
+        {/* GALERÍA */}
+        <Card sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
+          <Box sx={{ position: "relative", height: 350 }}>
+            {multimedia.length ? (
               <img
-                src={visibleMultimedia[currentImageIndex]?.url || visibleMultimedia[0].url}
-                alt={publicacion.titulo}
+                src={multimedia[currentImageIndex].url}
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
                 }}
               />
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography variant="h6" color="text.secondary">
-                  Sin imágenes
-                </Typography>
+              <Box
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Typography>No hay imágenes</Typography>
               </Box>
             )}
 
-            {/* Botón compartir */}
             <IconButton
               onClick={handleShare}
               sx={{
-                position: 'absolute',
+                position: "absolute",
                 top: 16,
                 right: 16,
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                '&:hover': { backgroundColor: 'white' },
+                backgroundColor: "rgba(255,255,255,0.8)",
               }}
             >
               <ShareIcon />
             </IconButton>
 
-            {/* ================================================================== */}
-            {/* 🎨 ARREGLO: Botones de navegación de la galería                 */}
-            {/* ================================================================== */}
             {hasMultipleImages && (
               <>
                 <IconButton
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     left: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    color: 'white',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    color: "white",
                   }}
                   onClick={handlePrevImage}
                 >
                   <ChevronLeftIcon />
                 </IconButton>
+
                 <IconButton
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     right: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    color: 'white',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    color: "white",
                   }}
                   onClick={handleNextImage}
                 >
@@ -284,161 +278,144 @@ const PublicacionDetail = () => {
                 </IconButton>
               </>
             )}
-            {/* ================================================================== */}
           </Box>
 
-          {/* ================================================================== */}
-          {/* 🎨 ARREGLO: Indicador de páginas (puntitos)                      */}
-          {/* ================================================================== */}
-          {visibleMultimedia.length > 0 && (
-            <Box sx={{ textAlign: 'center', py: 1, backgroundColor: 'white' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                {visibleMultimedia.map((_, index) => (
-                  <Box
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      backgroundColor: currentImageIndex === index ? 'primary.main' : '#E0E0E0',
-                      cursor: 'pointer',
-                    }}
-                  />
-                ))}
-              </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                {currentImageIndex + 1}/{visibleMultimedia.length}
+          {/* INDICADORES */}
+          {multimedia.length > 0 && (
+            <Box sx={{ textAlign: "center", py: 1 }}>
+              {multimedia.map((_, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    mx: 0.3,
+                    borderRadius: "50%",
+                    backgroundColor:
+                      idx === currentImageIndex
+                        ? "primary.main"
+                        : "#ccc",
+                  }}
+                />
+              ))}
+              <Typography variant="caption" sx={{ display: "block" }}>
+                {currentImageIndex + 1}/{multimedia.length}
               </Typography>
             </Box>
           )}
         </Card>
 
-        {/* Información de la publicación */}
-        <Card sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-          {/* Acciones rápidas (solo interesado) */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <PersonAddIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-              <Typography variant="caption">1 interesado</Typography>
-            </Box>
+        {/* INFORMACIÓN */}
+        <Card sx={{ p: 2, borderRadius: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <PersonAddIcon sx={{ color: "primary.main" }} />
+            <Typography variant="caption">1 interesado</Typography>
           </Box>
 
-          {/* Título */}
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: "bold", color: "primary.main", mt: 1 }}
+          >
             {publicacion.titulo}
           </Typography>
 
-          {/* Vendedor */}
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+          <Typography variant="caption" sx={{ color: "#666" }}>
             VENDIDO POR {publicacion.id_vendedor}
           </Typography>
 
-          {/* Descripción */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-            DESCRIPCIÓN
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            DESCRIPCIÓN:
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
+          <Typography color="text.secondary">
             {publicacion.descripcion}
           </Typography>
 
-          {/* ================================================================== */}
-          {/* 🎨 ARREGLO: Mostrar categoría (del mock)                         */}
-          {/* ================================================================== */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              CATEGORÍA:
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {/* Si hay un mock local para categoría, usarlo; si no, mostrar por defecto */}
-              {getCategoriaNombre(localExtra?.categoriaMock ?? 'rop')} 
-            </Typography>
-          </Box>
-
-          {/* ================================================================== */}
-          {/* 🎨 ARREGLO: Mostrar precio (manejando el 0)                      */}
-          {/* ================================================================== */}
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
-            {
-              (() => {
-                const rawPrice = (localExtra && localExtra.precio !== undefined) ? localExtra.precio : (publicacion as any).precio ?? (publicacion as any).price ?? (publicacion as any).valor ?? (publicacion as any).monto;
-                if (rawPrice !== null && rawPrice !== undefined && rawPrice !== '') {
-                  const num = Number(rawPrice);
-                  if (!Number.isNaN(num)) {
-                    return `PRECIO: ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(num)}`;
-                  }
-                }
-                return 'PRECIO: No disponible';
-              })()
-            }
+          {/* CATEGORÍA */}
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            CATEGORÍA:
+          </Typography>
+          <Typography color="text.secondary">
+            {localExtra?.categoriaMock
+              ? getCategoriaNombre(localExtra.categoriaMock)
+              : "No especificado"}
           </Typography>
 
+          {/* STOCK */}
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            STOCK:
+          </Typography>
+          <Typography color="text.secondary">
+            {localExtra?.stock ?? "No especificado"}
+          </Typography>
 
-          {/* Estado */}
+          {/* ENTREGA */}
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            TIPO DE ENTREGA:
+          </Typography>
+          <Typography color="text.secondary">
+            {localExtra?.tipoEntrega?.join(", ") ||
+              "No especificado"}
+          </Typography>
+
+          {/* PRECIO */}
+          <Typography
+            variant="h6"
+            sx={{
+              mt: 3,
+              fontWeight: "bold",
+              color: "primary.main",
+            }}
+          >
+            {localExtra?.precio
+              ? `PRECIO: ${new Intl.NumberFormat("es-CL", {
+                  style: "currency",
+                  currency: "CLP",
+                }).format(localExtra.precio)}`
+              : "PRECIO: No disponible"}
+          </Typography>
+
+          {/* ESTADO */}
           <Chip
             label={formatEstadoLabel(publicacion.estado)}
             sx={{
-              backgroundColor: ESTADO_COLORS[normalizeEstadoKey(publicacion.estado)] || '#BDBDBD',
-              color: 'white',
-              fontWeight: 'bold',
+              mt: 2,
+              backgroundColor:
+                ESTADO_COLORS[
+                  normalizeEstadoKey(publicacion.estado)
+                ] || "#999",
+              color: "white",
+              fontWeight: "bold",
             }}
           />
         </Card>
 
-        {/* Botones de acción */}
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={handleEdit}
-            sx={{
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              borderRadius: '25px',
-              py: 1.5,
-              fontWeight: 'bold',
-              textTransform: 'none',
-              '&:hover': {
-                borderColor: 'primary.dark',
-                backgroundColor: '#F1F8E9',
-              },
-            }}
-          >
-            Editar Publicación
-          </Button>
-        </Box>
+        {/* BOTÓN EDITAR */}
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<EditIcon />}
+          sx={{ mt: 3, fontWeight: "bold", borderRadius: "20px" }}
+          onClick={handleEdit}
+        >
+          Editar Publicación
+        </Button>
       </Box>
 
-      {/* Dialog de confirmación de eliminación */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>ELIMINAR PUBLICACIÓN</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {/* 🎨 ARREGLO: Cambiado a eliminación lógica */}
-            ¿Estás seguro que deseas mover esta publicación a Eliminadas?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: '#757575' }}>
-            Cancelar
-          </Button>
-          <Button onClick={handleDelete} sx={{ color: '#EF5350', fontWeight: 'bold' }}>
-            Confirmar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar para mensajes */}
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        autoHideDuration={4000}
+        onClose={() =>
+          setSnackbar({ ...snackbar, open: false })
+        }
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert
+          severity={snackbar.severity}
+          onClose={() =>
+            setSnackbar({ ...snackbar, open: false })
+          }
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

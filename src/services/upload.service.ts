@@ -24,69 +24,71 @@ export interface MultipleUploadResponse {
  */
 class UploadService {
   /**
-   * Sube una sola imagen a Cloudinary
+   * Sube UNA sola imagen
    */
   async uploadImage(file: File): Promise<CloudinaryUploadResult> {
+    const validation = this.validateImage(file);
+    if (!validation.valid) {
+      throw new Error(validation.error || 'Imagen inválida');
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
     const response = await api.post<UploadResponse>('/upload/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
 
     return response.data.imagen;
   }
 
   /**
-   * Sube múltiples imágenes a Cloudinary (máximo 10)
+   * Sube múltiples imágenes (máximo 10)
    */
   async uploadMultipleImages(files: File[]): Promise<CloudinaryUploadResult[]> {
+    const validation = this.validateMultipleImages(files);
+    if (!validation.valid) {
+      throw new Error(validation.error || 'Error al validar imágenes');
+    }
+
     const formData = new FormData();
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
+    files.forEach((f) => formData.append('files', f));
 
     const response = await api.post<MultipleUploadResponse>(
       '/upload/images',
       formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
 
     return response.data.imagenes;
   }
 
   /**
-   * Elimina una imagen de Cloudinary
+   * Elimina una imagen desde Cloudinary
    */
   async deleteImage(publicId: string): Promise<void> {
+    if (!publicId) throw new Error('publicId requerido');
+
     const encodedPublicId = encodeURIComponent(publicId);
     await api.delete(`/upload/${encodedPublicId}`);
   }
 
   /**
-   * Valida que el archivo sea una imagen y no supere el tamaño máximo
+   * Valida una imagen
    */
-  validateImage(file: File, maxSizeMB: number = 5): { valid: boolean; error?: string } {
-    // Validar tipo de archivo
+  validateImage(
+    file: File,
+    maxSizeMB: number = 5
+  ): { valid: boolean; error?: string } {
     if (!file.type.startsWith('image/')) {
-      return {
-        valid: false,
-        error: 'El archivo debe ser una imagen',
-      };
+      return { valid: false, error: 'El archivo debe ser una imagen válida' };
     }
 
-    // Validar tamaño (convertir MB a bytes)
-    const maxSizeBytes = maxSizeMB * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
+    const maxBytes = maxSizeMB * 1024 * 1024;
+    if (file.size > maxBytes) {
       return {
         valid: false,
-        error: `La imagen no debe superar los ${maxSizeMB}MB`,
+        error: `La imagen supera el límite de ${maxSizeMB}MB`,
       };
     }
 
@@ -94,25 +96,24 @@ class UploadService {
   }
 
   /**
-   * Valida múltiples archivos
+   * Valida múltiples imágenes
    */
   validateMultipleImages(
     files: File[],
     maxFiles: number = 10,
     maxSizeMB: number = 5
   ): { valid: boolean; error?: string } {
-    if (files.length > maxFiles) {
-      return {
-        valid: false,
-        error: `No puedes subir más de ${maxFiles} imágenes`,
-      };
+    if (!files || files.length === 0) {
+      return { valid: false, error: 'No seleccionaste ninguna imagen' };
     }
 
-    for (const file of files) {
-      const validation = this.validateImage(file, maxSizeMB);
-      if (!validation.valid) {
-        return validation;
-      }
+    if (files.length > maxFiles) {
+      return { valid: false, error: `Máximo permitido: ${maxFiles} imágenes` };
+    }
+
+    for (const f of files) {
+      const v = this.validateImage(f, maxSizeMB);
+      if (!v.valid) return v;
     }
 
     return { valid: true };

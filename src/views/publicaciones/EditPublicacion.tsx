@@ -1,5 +1,11 @@
-import { useState, useEffect, useRef } from 'react'; // <-- AÑADIDO useRef
-import { useParams, useNavigate } from 'react-router-dom';
+// ================================================================
+// EditPublicacion.tsx — PULGASHOP
+// Con todos los campos igual que CreatePublicacion
+// ================================================================
+
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
 import {
   Box,
   Card,
@@ -8,7 +14,7 @@ import {
   Button,
   FormControl,
   Select,
-  MenuItem, 
+  MenuItem,
   IconButton,
   Alert,
   Snackbar,
@@ -20,445 +26,525 @@ import {
   DialogActions,
   InputLabel,
   CircularProgress,
-} from '@mui/material';
+  Stack,
+  Chip,
+} from "@mui/material";
+
 import {
   ArrowBack as ArrowBackIcon,
   AddPhotoAlternate as AddPhotoIcon,
   CheckCircle as CheckIcon,
-} from '@mui/icons-material';
-import CloseIcon from '@mui/icons-material/Close';
-import publicacionesService, { Publicacion, UpdatePublicacionDto, Multimedia } from '../../services/publicaciones.service';
-import uploadService from '../../services/upload.service'; // <-- AÑADIDO
+} from "@mui/icons-material";
+import CloseIcon from "@mui/icons-material/Close";
 
-// ==================================================================
-//  MOCK DE CATEGORÍAS (Solo Frontend)
-// ==================================================================
+import publicacionesService, {
+  Publicacion,
+  Multimedia,
+  UpdatePublicacionDto,
+} from "../../services/publicaciones.service";
+
+import uploadService from "../../services/upload.service";
+
+// ================================================================
+// MOCK CATEGORÍAS / PRODUCTOS — Igual que CREATE
+// ================================================================
 const mockCategorias = [
-  { id: 'tec', nombre: 'Tecnología' },
-  { id: 'rop', nombre: 'Ropa y Accesorios' },
-  { id: 'hog', nombre: 'Hogar y Muebles' },
-  { id: 'lib', nombre: 'Libros y Apuntes' },
-  { id: 'otr', nombre: 'Otros' },
+  { id: "tec", nombre: "Tecnología" },
+  { id: "rop", nombre: "Ropa y Accesorios" },
+  { id: "hog", nombre: "Hogar y Muebles" },
+  { id: "lib", nombre: "Libros y Apuntes" },
+  { id: "otr", nombre: "Otros" },
 ];
-// ==================================================================
 
+const mockProductos: Record<string, { id: string; nombre: string }[]> = {
+  tec: [
+    { id: "p1", nombre: "Monitor 24”" },
+    { id: "p2", nombre: "Teclado Mecánico" },
+    { id: "p3", nombre: "Mouse Gamer RGB" },
+  ],
+  rop: [
+    { id: "p4", nombre: "Polerón Oversize" },
+    { id: "p5", nombre: "Pantalones Cargo" },
+    { id: "p6", nombre: "Chaqueta Denim" },
+  ],
+  hog: [
+    { id: "p7", nombre: "Silla de Oficina" },
+    { id: "p8", nombre: "Vaso térmico" },
+  ],
+  lib: [
+    { id: "p9", nombre: "Libro Cálculo UV" },
+    { id: "p10", nombre: "Apuntes Física I" },
+  ],
+  otr: [{ id: "p11", nombre: "Producto Genérico" }],
+};
+
+// ================================================================
+// COMPONENTE PRINCIPAL
+// ================================================================
 const EditPublicacion = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null); // <-- AÑADIDO
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [multimedia, setMultimedia] = useState<Multimedia[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error",
+  });
+
+  // FORM DATA — IGUAL A CREATE
   const [formData, setFormData] = useState({
-    titulo: '',
-    descripcion: '',
-    categoriaMock: '', // <-- CAMBIADO
-    precio: '',
+    categoria: "",
+    producto: "",
+    titulo: "",
+    descripcion: "",
+    stock: "",
+    tipoEntrega: [] as string[],
+    precio: "",
   });
 
   const [errors, setErrors] = useState({
-    titulo: '',
-    descripcion: '',
-    categoriaMock: '', // <-- CAMBIADO
-    precio: '',
+    categoria: "",
+    producto: "",
+    titulo: "",
+    descripcion: "",
+    stock: "",
+    tipoEntrega: "",
+    precio: "",
   });
 
+  // ================================================================
+  // CARGAR PUBLICACIÓN + EXTRA LOCAL
+  // ================================================================
   useEffect(() => {
-    if (id) {
-      loadPublicacion();
-    }
+    if (id) loadPublicacion();
   }, [id]);
 
   const loadPublicacion = async () => {
     try {
       setLoading(true);
+
       const data = await publicacionesService.getById(id!);
-      // Si la publicación está marcada como eliminada en localStorage, restaurarla localmente
-      const estado = (data.estado || '').toString().toLowerCase();
-      if (estado.includes('elimin')) {
-        try {
-          await publicacionesService.restorePublicationLocal(data.id!);
-          // Volver a obtener la publicación ya restaurada
-          const refreshed = await publicacionesService.getById(id!);
-          setPublicacion(refreshed);
-          setMultimedia(refreshed.multimedia || []);
-          setSnackbar({ open: true, message: 'Publicación restaurada localmente para edición', severity: 'success' });
-          return;
-        } catch (e) {
-          console.warn('No se pudo restaurar localmente la publicación:', e);
-          // caerá al flujo normal y se mostrará la publicación tal cual
-        }
-      }
       setPublicacion(data);
+      setMultimedia(data.multimedia || []);
+
+      // Leer extras locales
+      const raw = localStorage.getItem("publicacion_extras");
+      const map = raw ? JSON.parse(raw) : {};
+      const extra = map[String(data.id)] || {};
+
+      const detectedCategory =
+        Object.keys(mockProductos).find((k) =>
+          mockProductos[k].some((p) => p.id === data.id_producto)
+        ) || extra.categoria || "tec";
+
       setFormData({
+        categoria: detectedCategory,
+        producto: data.id_producto || extra.producto || "",
         titulo: data.titulo,
         descripcion: data.descripcion,
-        categoriaMock: 'rop', // <-- CAMBIADO (ponemos un valor mock, ej: "Ropa y Accesorios")
-        precio: data.precio !== undefined && data.precio !== null ? String(data.precio) : '',
+        stock: extra.stock ?? "",
+        tipoEntrega: extra.tipoEntrega ?? [],
+        precio:
+          extra.precio !== undefined && extra.precio !== null
+            ? String(extra.precio)
+            : data.precio
+            ? String(data.precio)
+            : "",
       });
-      setMultimedia(data.multimedia || []);
-    } catch (error) {
-      console.error('Error al cargar publicación:', error);
-      setSnackbar({ open: true, message: 'Error al cargar la publicación', severity: 'error' });
+    } catch {
+      setSnackbar({
+        open: true,
+        message: "Error al cargar la publicación",
+        severity: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
-    setErrors({ ...errors, [field]: '' });
+  // ================================================================
+  // HANDLERS
+  // ================================================================
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  // ==================================================================
-  // ✨ LÓGICA DE SUBIDA DE ARCHIVOS (COPIADA DE CREATE)
-  // ==================================================================
-  
-  // 1. Abre el explorador de archivos
-  const handleAddImageClick = () => {
-    fileInputRef.current?.click();
-  };
+  // ================================================================
+  // AGREGAR IMÁGENES
+  // ================================================================
+  const handleAddImageClick = () => fileInputRef.current?.click();
 
-  // 2. Maneja los archivos seleccionados
-  const handleNewFilesSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewFilesSelected = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = event.target.files;
-    if (!files || files.length === 0 || !publicacion) return;
+    if (!files || !publicacion) return;
 
     if (multimedia.length + files.length > 6) {
-      setSnackbar({ open: true, message: 'No puedes subir más de 6 imágenes', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "Máximo 6 imágenes",
+        severity: "error",
+      });
       return;
     }
 
-    setSaving(true); // Muestra el spinner
+    setSaving(true);
+
     try {
-      const uploadPromises = Array.from(files).map((file) => {
-        const validation = uploadService.validateImage(file);
-        if (!validation.valid) {
-          setSnackbar({ open: true, message: validation.error || 'Error de validación', severity: 'error' });
-          return Promise.reject(validation.error || 'Error de validación');
-        }
+      const uploads = Array.from(files).map((file) => {
+        const v = uploadService.validateImage(file);
+        if (!v.valid) throw new Error(v.error);
         return uploadService.uploadImage(file);
       });
 
-      const uploadedImages = await Promise.all(uploadPromises);
+      const uploaded = await Promise.all(uploads);
 
-      // Añadir las imágenes al backend
-      const multimediaToAdd = uploadedImages.map((uploadedImage, index) => ({
-        url: uploadedImage.url,
+      const items = uploaded.map((img, index) => ({
+        url: img.url,
         orden: multimedia.length + index,
-        tipo: 'imagen',
+        tipo: "imagen",
       }));
 
-      // Guardar las nuevas imágenes en el backend
       await Promise.all(
-        multimediaToAdd.map((item) => publicacionesService.addMultimedia(publicacion.id!, item))
+        items.map((item) =>
+          publicacionesService.addMultimedia(publicacion.id!, item)
+        )
       );
 
-      setSnackbar({ open: true, message: 'Imágenes agregadas exitosamente', severity: 'success' });
-      await loadPublicacion(); // Recarga la publicación para mostrar las nuevas imágenes
-
-    } catch (error) {
-      console.error("Error al subir imágenes:", error);
-      setSnackbar({ open: true, message: 'Error al agregar las imágenes', severity: 'error' });
+      await loadPublicacion();
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "Imágenes agregadas",
+      });
+    } catch {
+      setSnackbar({
+        open: true,
+        message: "Error al subir imágenes",
+        severity: "error",
+      });
     } finally {
       setSaving(false);
-      if (fileInputRef.current) fileInputRef.current.value = ''; // Limpia el input
-    }
-  };
-  // ==================================================================
-  // Fin de la lógica de subida
-  // ==================================================================
-
-
-  const handleRemoveImage = (index: number) => {
-    const multimediaToDelete = multimedia[index];
-    
-    if (multimediaToDelete.id) {
-      setSaving(true); // Muestra spinner
-      // Marca la multimedia como eliminada localmente y marca la publicación como eliminada localmente
-      // IMPORTANTE: pasar 'false' para evitar marcar la publicación como eliminada
-        publicacionesService.deleteMultimedia(multimediaToDelete.id, publicacion?.id, false)
-        .then(() => {
-          // Actualizar estado localmente para eliminar solo la imagen seleccionada
-          setMultimedia((prev) => prev.filter((m) => m.id !== multimediaToDelete.id));
-          // Ajustar índice actual si es necesario
-          setCurrentImageIndex((prevIdx) => {
-            const newLength = Math.max(0, multimedia.length - 1);
-            if (newLength === 0) return 0;
-            return Math.min(prevIdx, newLength - 1);
-          });
-          // No mostrar snackbar de éxito para esta acción (solo eliminar silenciosamente)
-        })
-        .catch((error) => {
-          console.error('Error al eliminar multimedia:', error);
-          setSnackbar({ open: true, message: 'Error al eliminar la imagen', severity: 'error' });
-        })
-        .finally(() => {
-          setSaving(false); // Oculta spinner
-        });
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Drag & drop handlers for reordering thumbnails
+  // ================================================================
+  // ELIMINAR IMAGEN
+  // ================================================================
+  const handleRemoveImage = async (index: number) => {
+    const target = multimedia[index];
+    if (!target?.id) return;
+
+    setSaving(true);
+
+    try {
+      await publicacionesService.deleteMultimedia(target.id);
+
+      setMultimedia((prev) => prev.filter((m) => m.id !== target.id));
+
+      setCurrentImageIndex((prev) => {
+        const newL = multimedia.length - 1;
+        return Math.max(0, Math.min(prev, newL - 1));
+      });
+    } catch {
+      setSnackbar({
+        open: true,
+        message: "Error al eliminar imagen",
+        severity: "error",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ================================================================
+  // DRAG & DROP ORDEN
+  // ================================================================
   const handleDragStart = (e: React.DragEvent, index: number) => {
-    e.dataTransfer.setData('text/plain', String(index));
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData("index", String(index));
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+
+  const handleDrop = async (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
 
-  const handleDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    const fromStr = e.dataTransfer.getData('text/plain');
-    const from = Number(fromStr);
-    if (Number.isNaN(from)) return;
-    if (from === index) return;
+    const from = Number(e.dataTransfer.getData("index"));
+    if (isNaN(from) || from === index) return;
 
-    setMultimedia((prev) => {
-      const copy = [...prev];
-      const [moved] = copy.splice(from, 1);
-      copy.splice(index, 0, moved);
-      // Persist new order (only ids) locally
-      if (publicacion?.id) {
-        const ids = copy.map((m) => m.id).filter((x): x is string => !!x);
-        if (ids.length > 0) publicacionesService.setMultimediaOrderLocal(publicacion.id, ids);
-      }
-      return copy;
-    });
+    const newOrder = [...multimedia];
+    const [item] = newOrder.splice(from, 1);
+    newOrder.splice(index, 0, item);
 
-    // After reorder, set current image to the dropped position
+    setMultimedia(newOrder);
     setCurrentImageIndex(index);
-    setSnackbar({ open: true, message: 'Orden de imágenes actualizado', severity: 'success' });
+
+    if (publicacion?.id) {
+      const ids = newOrder.map((m) => m.id!).filter(Boolean);
+      await publicacionesService.setMultimediaOrderLocal(publicacion.id, ids);
+    }
+
+    setSnackbar({
+      open: true,
+      message: "Orden actualizado",
+      severity: "success",
+    });
   };
 
-  const validateForm = (): boolean => {
-    const newErrors = {
-      titulo: '',
-      descripcion: '',
-      categoriaMock: '', // <-- CAMBIADO
-      precio: '',
-    };
+  // ================================================================
+  // VALIDACIÓN
+  // ================================================================
+  const validateForm = () => {
+    const newErrors: any = {};
+    let ok = true;
 
-    let isValid = true;
-
-    if (!formData.titulo || formData.titulo.length < 5) {
-      newErrors.titulo = 'El título debe tener al menos 5 caracteres';
-      isValid = false;
+    if (!formData.categoria) {
+      newErrors.categoria = "Debes seleccionar una categoría";
+      ok = false;
     }
 
-    if (!formData.descripcion || formData.descripcion.length < 10) {
-      newErrors.descripcion = 'La descripción debe tener al menos 10 caracteres';
-      isValid = false;
+    if (!formData.producto) {
+      newErrors.producto = "Debes seleccionar un producto";
+      ok = false;
     }
 
-    if (!formData.categoriaMock) { // <-- CAMBIADO
-      newErrors.categoriaMock = 'Debes seleccionar una categoría';
-      isValid = false;
+    if (formData.titulo.length < 5) {
+      newErrors.titulo = "Mínimo 5 caracteres";
+      ok = false;
     }
 
-    // Precio opcional en edición: el usuario puede dejarlo vacío para eliminarlo
-    if (formData.precio) {
-      const num = Number(formData.precio);
-      if (Number.isNaN(num) || num < 0) {
-        newErrors.precio = 'El precio debe ser un número válido >= 0';
-        isValid = false;
-      }
+    if (formData.descripcion.length < 10) {
+      newErrors.descripcion = "Mínimo 10 caracteres";
+      ok = false;
+    }
+
+    if (!formData.stock || Number(formData.stock) < 1) {
+      newErrors.stock = "Stock mínimo 1";
+      ok = false;
+    }
+
+    if (!formData.tipoEntrega.length) {
+      newErrors.tipoEntrega = "Selecciona al menos una opción";
+      ok = false;
+    }
+
+    if (formData.precio && Number(formData.precio) < 0) {
+      newErrors.precio = "Precio inválido";
+      ok = false;
     }
 
     setErrors(newErrors);
-    return isValid;
+    return ok;
   };
 
   const handleSaveConfirm = () => {
     if (!validateForm()) {
-      setSnackbar({ open: true, message: 'Por favor completa todos los campos requeridos', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "Completa los campos obligatorios",
+        severity: "error",
+      });
       return;
     }
     setSaveDialogOpen(true);
   };
 
+  // ================================================================
+  // GUARDAR CAMBIOS — BACKEND + LOCALSTORAGE
+  // ================================================================
   const handleSave = async () => {
     try {
       setSaving(true);
       setSaveDialogOpen(false);
 
-      // Creamos el DTO solo con los campos que el backend espera
       const dto: UpdatePublicacionDto = {
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        // Precio opcional: si el campo queda vacío no lo enviamos al backend
-        ...(formData.precio !== '' ? { precio: Number(formData.precio) } : {}),
-        // No enviamos 'categoriaMock'
+        ...(formData.precio !== "" ? { precio: Number(formData.precio) } : {}),
       };
 
       await publicacionesService.update(id!, dto);
-      // Actualizar localStorage con mock de precio y categoría para que la lista y detalle reflejen cambios
-      try {
-        const key = 'publicacion_extras';
-        const raw = localStorage.getItem(key);
-        const map = raw ? JSON.parse(raw) : {};
-        map[String(id)] = {
-          precio: Number(formData.precio),
-          categoriaMock: formData.categoriaMock,
-        };
-        localStorage.setItem(key, JSON.stringify(map));
-      } catch (e) {
-        console.warn('No se pudo guardar publicacion_extras en localStorage', e);
-      }
-      
-      setSnackbar({ open: true, message: 'Publicación actualizada exitosamente', severity: 'success' });
-      
-      setTimeout(() => {
-        navigate(`/publicaciones/${id}`);
-      }, 1500);
-    } catch (error) {
-      console.error('Error al actualizar publicación:', error);
-      setSnackbar({ open: true, message: 'Error al actualizar la publicación', severity: 'error' });
+
+      // Guardar extras locales
+      const key = "publicacion_extras";
+      const raw = localStorage.getItem(key);
+      const map = raw ? JSON.parse(raw) : {};
+
+      map[id!] = {
+        categoria: formData.categoria,
+        producto: formData.producto,
+        stock: Number(formData.stock),
+        tipoEntrega: formData.tipoEntrega,
+        precio: formData.precio ? Number(formData.precio) : null,
+      };
+
+      localStorage.setItem(key, JSON.stringify(map));
+
+      setSnackbar({
+        open: true,
+        message: "Publicación actualizada correctamente",
+        severity: "success",
+      });
+
+      setTimeout(() => navigate(`/publicaciones/${id}`), 900);
+    } catch {
+      setSnackbar({
+        open: true,
+        message: "Error al guardar cambios",
+        severity: "error",
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  // ================================================================
+  // UI
+  // ================================================================
+  if (loading)
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Typography>Cargando...</Typography>
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <Typography>Cargando…</Typography>
       </Box>
     );
-  }
 
-  if (!publicacion) {
+  if (!publicacion)
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Typography>Publicación no encontrada</Typography>
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <Typography>No encontrada</Typography>
       </Box>
     );
-  }
 
   return (
-    <Box sx={{ backgroundColor: '#ffffff', minHeight: '100vh', pb: 3 }}>
-      {/* Header con fondo theme - full-bleed (compensa padding del layout) */}
-      <Box sx={{ backgroundColor: 'primary.main', color: 'primary.contrastText', p: 2, display: 'flex', alignItems: 'center', width: 'calc(100% + 48px)', marginLeft: '-24px', marginRight: '-24px', boxSizing: 'border-box' }}>
-        <IconButton onClick={() => navigate(`/publicaciones/${id}`)} sx={{ color: 'primary.contrastText', mr: 2 }}>
+    <Box sx={{ backgroundColor: "#ffffff", minHeight: "100vh", pb: 3 }}>
+      {/* HEADER */}
+      <Box
+        sx={{
+          backgroundColor: "primary.main",
+          color: "primary.contrastText",
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          width: "calc(100% + 48px)",
+          marginLeft: "-24px",
+          marginRight: "-24px",
+        }}
+      >
+        <IconButton
+          sx={{ color: "white", mr: 2 }}
+          onClick={() => navigate(`/publicaciones/${id}`)}
+        >
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+
+        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
           Editar Publicación
         </Typography>
       </Box>
 
-      {/* Input oculto para subir archivos */}
+      {/* INPUT OCULTO */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         multiple
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
         onChange={handleNewFilesSelected}
       />
 
       {(saving || loading) && <LinearProgress />}
 
-      <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-        {/* Botones de acción superior */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ maxWidth: 600, mx: "auto", p: 2 }}>
+        {/* BOTÓN DE PORTADA */}
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
           <Button
             variant="outlined"
             size="small"
-            onClick={async () => {
-              if (!publicacion || !multimedia[currentImageIndex]?.id) return;
-              setSaving(true);
-              try {
-                await publicacionesService.setPortadaLocal(publicacion.id!, multimedia[currentImageIndex].id!);
-                await loadPublicacion();
-                setSnackbar({ open: true, message: 'Portada actualizada', severity: 'success' });
-              } catch (e) {
-                console.error(e);
-                setSnackbar({ open: true, message: 'Error al definir portada', severity: 'error' });
-              } finally {
-                setSaving(false);
-              }
-            }}
-            disabled={saving || multimedia.length === 0 || currentImageIndex === 0}
+            disabled={
+              saving || multimedia.length === 0 || currentImageIndex === 0
+            }
             sx={{
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              borderRadius: '20px',
-              textTransform: 'none',
+              borderColor: "primary.main",
+              color: "primary.main",
+              borderRadius: "20px",
+            }}
+            onClick={async () => {
+              await publicacionesService.setPortadaLocal(
+                publicacion.id!,
+                multimedia[currentImageIndex].id!
+              );
+              await loadPublicacion();
             }}
           >
             Definir como portada
           </Button>
         </Box>
 
-        {/* Galería de Imágenes */}
-        <Card sx={{ mb: 2, borderRadius: 2, overflow: 'hidden' }}>
-          <Box sx={{ position: 'relative', backgroundColor: '#E0E0E0', height: 300 }}>
+        {/* GALERÍA PRINCIPAL */}
+        <Card sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
+          <Box
+            sx={{
+              position: "relative",
+              backgroundColor: "#E0E0E0",
+              height: 300,
+            }}
+          >
             {multimedia.length > 0 ? (
               <>
                 <img
                   src={multimedia[currentImageIndex].url}
-                  alt={`Imagen ${currentImageIndex + 1}`}
-                  loading="lazy"
+                  alt=""
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
                   }}
                 />
-                {/* X eliminar (sin confirmación) */}
+
                 <IconButton
-                  onClick={(e) => { e.stopPropagation(); handleRemoveImage(currentImageIndex); }}
+                  onClick={() => handleRemoveImage(currentImageIndex)}
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 8,
                     right: 8,
-                    zIndex: 20,
-                    backgroundColor: 'rgba(255,255,255,0.85)',
-                    color: '#D32F2F',
-                    '&:hover': { backgroundColor: 'white' },
+                    backgroundColor: "rgba(255,255,255,0.85)",
+                    color: "#D32F2F",
                   }}
-                  size="small"
                 >
                   <CloseIcon />
                 </IconButton>
-                {/* Eliminar la X aquí */}
-                <Box sx={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 1, alignItems: 'center' }}>
-                  {multimedia[currentImageIndex]?.eliminado && (
-                    <>
-                      <Typography variant="caption" sx={{ backgroundColor: 'rgba(255,255,255,0.9)', px: 1, py: 0.5, borderRadius: 1, color: '#D32F2F', fontWeight: 'bold' }}>
-                        Eliminada
-                      </Typography>
-                      <Button size="small" variant="contained" color="success" onClick={async () => { setSaving(true); try { await publicacionesService.restoreMultimediaLocal(multimedia[currentImageIndex].id!); await loadPublicacion(); setSnackbar({ open: true, message: 'Imagen restaurada', severity: 'success' }); } catch (e:any) { console.error(e); const msg = e?.response?.data?.message || 'Error al restaurar imagen'; setSnackbar({ open: true, message: msg, severity: 'error' }); } finally { setSaving(false); } }}>
-                        Restaurar
-                      </Button>
-                    </>
-                  )}
-                </Box>
               </>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <AddPhotoIcon sx={{ fontSize: 64, color: '#9E9E9E', mb: 2 }} />
-                <Typography variant="body1" color="text.secondary">
-                  Sin imágenes
-                </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  height: "100%",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <AddPhotoIcon sx={{ fontSize: 60, color: "#aaa" }} />
+                <Typography>Sin imágenes</Typography>
               </Box>
             )}
           </Box>
 
-          {/* Thumbnails */}
-          <Box sx={{ p: 2, display: 'flex', gap: 1, overflowX: 'auto' }}>
+          {/* MINIATURAS */}
+          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", p: 2 }}>
             {multimedia.map((img, index) => (
               <Box
-                key={img.id ?? index}
+                key={index}
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={handleDragOver}
@@ -467,235 +553,200 @@ const EditPublicacion = () => {
                 sx={{
                   width: 70,
                   height: 70,
-                  flexShrink: 0,
-                  border: currentImageIndex === index ? '3px solid' : '2px solid #E0E0E0',
-                  borderColor: currentImageIndex === index ? 'primary.main' : 'transparent',
                   borderRadius: 1,
-                  overflow: 'hidden',
-                  cursor: 'grab',
-                  position: 'relative',
-                  '&:active': { cursor: 'grabbing' },
+                  border:
+                    currentImageIndex === index
+                      ? "3px solid #1976d2"
+                      : "1px solid #ddd",
+                  overflow: "hidden",
+                  cursor: "pointer",
                 }}
               >
                 <img
                   src={img.url}
-                  alt={`Thumbnail ${index + 1}`}
-                  loading="lazy"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
                 />
-                {img.eliminado && (
-                  <Box sx={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography variant="caption" sx={{ color: 'white', backgroundColor: 'rgba(211,47,47,0.85)', px: 0.8, py: 0.4, borderRadius: 1 }}>
-                      Eliminada
-                    </Typography>
-                  </Box>
-                )}
               </Box>
             ))}
-            
-            {/* Botón agregar imagen */}
+
             {multimedia.length < 6 && (
               <Box
                 onClick={handleAddImageClick}
                 sx={{
                   width: 70,
                   height: 70,
-                  flexShrink: 0,
-                  border: '2px dashed',
-                  borderColor: 'primary.main',
                   borderRadius: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  backgroundColor: '#F5F5F5',
-                  '&:hover': { backgroundColor: '#E8F5E9' },
+                  border: "2px dashed #1976d2",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  cursor: "pointer",
                 }}
               >
-                {saving ? <CircularProgress size={24} /> : <AddPhotoIcon sx={{ color: 'primary.main' }} />}
+                {saving ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <AddPhotoIcon color="primary" />
+                )}
               </Box>
             )}
           </Box>
-
-          {/* Indicador */}
-          <Box sx={{ textAlign: 'center', pb: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              {multimedia.length > 0
-                ? `${currentImageIndex + 1}/${multimedia.length} fotos`
-                : `0/6 fotos`}
-            </Typography>
-          </Box>
         </Card>
 
-        {/* Formulario */}
-        <Card sx={{ p: 2, borderRadius: 2 }}>
-          {/* ================================================================== */}
-          {/* 🎨 ARREGLO VISUAL: TÍTULO                                        */}
-          {/* ================================================================== */}
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              label="TÍTULO"
-              value={formData.titulo}
-              onChange={(e) => handleInputChange('titulo', e.target.value)}
-              error={!!errors.titulo}
-              helperText={errors.titulo || `${formData.titulo.length}/80 caracteres`}
-              inputProps={{ maxLength: 80 }}
-              InputProps={{
-                endAdornment: formData.titulo.length >= 5 && <CheckIcon sx={{ color: 'primary.main' }} />,
-              }}
-            />
-          </Box>
-
-          {/* ================================================================== */}
-          {/* 🎨 ARREGLO VISUAL: DESCRIPCIÓN                                   */}
-          {/* ================================================================== */}
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={4}
-              label="DESCRIPCIÓN"
-              value={formData.descripcion}
-              onChange={(e) => handleInputChange('descripcion', e.target.value)}
-              error={!!errors.descripcion}
-              helperText={errors.descripcion || `${formData.descripcion.length}/500 caracteres`}
-              inputProps={{ maxLength: 500 }}
-              InputProps={{
-                endAdornment: formData.descripcion.length >= 10 && <CheckIcon sx={{ color: 'primary.main' }} />,
-              }}
-            />
-          </Box>
-
-          {/* ================================================================== */}
-          {/* ✨ MOCK DE CATEGORÍAS (Solo Frontend)                            */}
-          {/* ================================================================== */}
-          <Box sx={{ mb: 2 }}>
-            <FormControl fullWidth variant="outlined" error={!!errors.categoriaMock}>
-              <InputLabel id="categoria-mock-label">SELECCIONAR CATEGORÍA</InputLabel>
-              <Select
-                labelId="categoria-mock-label"
-                label="SELECCIONAR CATEGORÍA"
-                value={formData.categoriaMock}
-                onChange={(e) => handleInputChange('categoriaMock', e.target.value)}
-              >
-                {mockCategorias.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-              {errors.categoriaMock && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
-                  {errors.categoriaMock}
-                </Typography>
-              )}
-            </FormControl>
-          </Box>
-
-          {/* ================================================================== */}
-          {/* 🎨 ARREGLO VISUAL: PRECIO                                        */}
-          {/* ================================================================== */}
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              label="PRECIO"
-              type="number"
-              value={formData.precio}
-              onChange={(e) => handleInputChange('precio', e.target.value.replace(/\D/g, ''))}
-              error={!!errors.precio}
-              helperText={errors.precio}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-                endAdornment: formData.precio && <CheckIcon sx={{ color: 'primary.main' }} />,
-              }}
-            />
-          </Box>
-
-          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
-            AGREGAR NUEVAS IMÁGENES
-          </Typography>
-
-          {/* ================================================================== */}
-          {/* 🎨 BOTÓN DE AÑADIR IMAGEN                                        */}
-          {/* ================================================================== */}
-          <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleAddImageClick} // <-- CAMBIADO
-              disabled={saving || multimedia.length >= 6}
-              sx={{
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                borderRadius: '20px',
-                textTransform: 'none',
-              }}
+        {/* FORMULARIO COMPLETO */}
+        <Card sx={{ p: 3, borderRadius: 2 }}>
+          {/* Categoría */}
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Categoría</InputLabel>
+            <Select
+              value={formData.categoria}
+              label="Categoría"
+              onChange={(e) => handleInputChange("categoria", e.target.value)}
             >
-              📷 (Máximo 6 fotos)
-            </Button>
-            {/* Removed video button as requested */}
-          </Box>
+              {mockCategorias.map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.nombre}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-          {/* Botón Guardar */}
+          {/* Producto */}
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Producto asociado</InputLabel>
+            <Select
+              value={formData.producto}
+              label="Producto asociado"
+              disabled={!formData.categoria}
+              onChange={(e) => handleInputChange("producto", e.target.value)}
+            >
+              {(mockProductos[formData.categoria] || []).map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.nombre}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Título */}
+          <TextField
+            label="Título"
+            fullWidth
+            sx={{ mb: 2 }}
+            value={formData.titulo}
+            onChange={(e) => handleInputChange("titulo", e.target.value)}
+            InputProps={{
+              endAdornment:
+                formData.titulo.length >= 5 && <CheckIcon color="success" />,
+            }}
+          />
+
+          {/* Descripción */}
+          <TextField
+            label="Descripción"
+            fullWidth
+            multiline
+            rows={3}
+            sx={{ mb: 2 }}
+            value={formData.descripcion}
+            onChange={(e) => handleInputChange("descripcion", e.target.value)}
+            InputProps={{
+              endAdornment:
+                formData.descripcion.length >= 10 && (
+                  <CheckIcon color="success" />
+                ),
+            }}
+          />
+
+          {/* Stock */}
+          <TextField
+            label="Stock"
+            type="number"
+            fullWidth
+            sx={{ mb: 2 }}
+            value={formData.stock}
+            onChange={(e) => handleInputChange("stock", e.target.value)}
+          />
+
+          {/* Tipo Entrega */}
+          <Typography sx={{ fontSize: 13, mb: 1 }}>Tipo de Entrega</Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+            {["Presencial", "Envío"].map((op) => (
+              <Chip
+                key={op}
+                label={op}
+                clickable
+                variant={
+                  formData.tipoEntrega.includes(op) ? "filled" : "outlined"
+                }
+                color={
+                  formData.tipoEntrega.includes(op) ? "primary" : "default"
+                }
+                onClick={() => {
+                  const exists = formData.tipoEntrega.includes(op);
+                  const updated = exists
+                    ? formData.tipoEntrega.filter((x) => x !== op)
+                    : [...formData.tipoEntrega, op];
+                  handleInputChange("tipoEntrega", updated);
+                }}
+              />
+            ))}
+          </Stack>
+
+          {/* Precio */}
+          <TextField
+            label="Precio"
+            type="number"
+            fullWidth
+            sx={{ mb: 3 }}
+            value={formData.precio}
+            onChange={(e) => handleInputChange("precio", e.target.value)}
+            InputProps={{
+              startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+              endAdornment:
+                formData.precio && <CheckIcon color="success" />,
+            }}
+          />
+
           <Button
             fullWidth
             variant="contained"
             onClick={handleSaveConfirm}
             disabled={saving}
-            sx={{
-              // ==================================================================
-              // 🎨 ARREGLO VISUAL: BOTÓN LEGIBLE
-              // ==================================================================
-              backgroundColor: 'primary.main',
-              color: 'primary.contrastText',
-              '&:hover': { backgroundColor: 'primary.dark' },
-              '&:disabled': { 
-                backgroundColor: '#BDBDBD',
-                color: '#757575' 
-              },
-              borderRadius: '25px',
-              py: 1.5,
-              fontSize: '16px',
-              fontWeight: 'bold',
-              textTransform: 'none',
-            }}
+            sx={{ py: 1.5, fontWeight: "bold" }}
           >
-            {saving ? 'Guardando...' : 'Guardar Cambios'}
+            Guardar Cambios
           </Button>
         </Card>
       </Box>
 
-      {/* Dialog de confirmación */}
+      {/* DIALOG */}
       <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-        <DialogTitle>⚠️ ¿Estás seguro que deseas guardar los cambios realizados?</DialogTitle>
+        <DialogTitle>Confirmar cambios</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Los cambios se guardarán permanentemente.
+            ¿Deseas guardar los cambios realizados en esta publicación?
           </DialogContentText>
         </DialogContent>
-          <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)} sx={{ color: '#757575' }}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-            Confirmar
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSave} autoFocus>
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar */}
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
   );
