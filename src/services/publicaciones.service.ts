@@ -193,6 +193,14 @@ const publicacionesService = {
   },
 
   // ============================================================================
+  // ELIMINAR PUBLICACIÓN (cambiar estado a eliminado)
+  // ============================================================================
+  async delete(id: string) {
+    const res = await api.delete(`/publicaciones/${id}`);
+    return res.data;
+  },
+
+  // ============================================================================
   // ELIMINAR MULTIMEDIA (local, no backend)
   // ============================================================================
   async deleteMultimedia(idMedia: string) {

@@ -131,13 +131,13 @@ export default function PublicacionesList() {
     if (!id) return;
     try {
       if (restore) {
-        // Restauración local (front-only): marca como 'activo'
-        await publicacionesService.restorePublicationLocal(id);
+        // Restaurar publicación: cambiar estado a 'activo' en el backend
+        await publicacionesService.changeStatus(id, 'activo');
       } else {
-        // Marcar publicación como eliminada en frontend (no tocar backend)
-        await publicacionesService.markPublicationDeletedLocal(id);
+        // Eliminar publicación: cambiar estado a 'eliminado' en el backend
+        await publicacionesService.delete(id);
       }
-      setSnackbar({ open: true, message: restore ? 'Publicación restaurada' : 'Publicación movida a Eliminadas', severity: 'success' });
+      setSnackbar({ open: true, message: restore ? 'Publicación restaurada' : 'Publicación eliminada exitosamente', severity: 'success' });
       await loadPublicaciones();
     } catch (error) {
       console.error('Error al cambiar estado:', error);
