@@ -36,6 +36,38 @@ const mockCategorias = [
   { id: "lib", nombre: "Libros y Apuntes" },
   { id: "otr", nombre: "Otros" },
 ];
+// AGREGAR ESTO DEBAJO DE mockCategorias
+const mockProductos: Record<string, { id: string; nombre: string }[]> = {
+  tec: [
+    { id: "p1", nombre: "Monitor 24”" },
+    { id: "p2", nombre: "Teclado Mecánico" },
+    { id: "p3", nombre: "Mouse Gamer RGB" },
+  ],
+  rop: [
+    { id: "p4", nombre: "Polerón Oversize" },
+    { id: "p5", nombre: "Pantalones Cargo" },
+    { id: "p6", nombre: "Chaqueta Denim" },
+  ],
+  hog: [
+    { id: "p7", nombre: "Silla de Oficina" },
+    { id: "p8", nombre: "Vaso térmico" },
+  ],
+  lib: [
+    { id: "p9", nombre: "Libro Cálculo UV" },
+    { id: "p10", nombre: "Apuntes Física I" },
+  ],
+  otr: [{ id: "p11", nombre: "Producto Genérico" }],
+};
+
+const getProductoNombre = (idProducto?: string) => {
+  if (!idProducto) return "No especificado";
+  // Buscar en todas las categorías
+  for (const catKey in mockProductos) {
+    const producto = mockProductos[catKey].find((p) => p.id === idProducto);
+    if (producto) return producto.nombre;
+  }
+  return idProducto; // Si no encuentra el nombre, muestra el ID o el texto original
+};
 
 const getCategoriaNombre = (id: string) => {
   const categoria = mockCategorias.find((cat) => cat.id === id);
@@ -331,11 +363,22 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
             {publicacion.descripcion}
           </Typography>
 
-          {/* CATEGORÍA */}
+          {/* --- PRODUCTO --- */}
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            PRODUCTO:
+          </Typography>
+          <Typography color="text.secondary">
+            {/* Intentamos obtenerlo del extra local o directamente del id_producto de la publicación */}
+            {getProductoNombre(localExtra?.producto || publicacion.id_producto)}
+          </Typography>
+          {/* --------------------------- */}
+
+{/* CATEGORÍA */}
           <Typography sx={{ mt: 2, fontWeight: "bold" }}>
             CATEGORÍA:
           </Typography>
           <Typography color="text.secondary">
+            {/* Leemos categoriaMock */}
             {localExtra?.categoriaMock
               ? getCategoriaNombre(localExtra.categoriaMock)
               : "No especificado"}
@@ -346,7 +389,8 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
             STOCK:
           </Typography>
           <Typography color="text.secondary">
-            {localExtra?.stock ?? "No especificado"}
+            {/* Leemos stockMock */}
+            {localExtra?.stockMock ?? "No especificado"}
           </Typography>
 
           {/* ENTREGA */}
@@ -354,8 +398,8 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
             TIPO DE ENTREGA:
           </Typography>
           <Typography color="text.secondary">
-            {localExtra?.tipoEntrega?.join(", ") ||
-              "No especificado"}
+            {/* Leemos tipoEntregaMock */}
+            {localExtra?.tipoEntregaMock?.join(", ") || "No especificado"}
           </Typography>
 
           {/* PRECIO */}
@@ -367,11 +411,12 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
               color: "primary.main",
             }}
           >
-            {localExtra?.precio
+            {/* Priorizamos el precio real de la publicación, luego el extra local */}
+            {(publicacion.precio || localExtra?.precio)
               ? `PRECIO: ${new Intl.NumberFormat("es-CL", {
                   style: "currency",
                   currency: "CLP",
-                }).format(localExtra.precio)}`
+                }).format(publicacion.precio || localExtra.precio)}`
               : "PRECIO: No disponible"}
           </Typography>
 
@@ -388,6 +433,40 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
               fontWeight: "bold",
             }}
           />
+{/* --- NUEVA SECCIÓN: VER RESEÑAS --- */}
+          <Box
+            sx={{
+              mt: 4,
+              pt: 2,
+              borderTop: "1px solid #eee", // Una línea sutil para separar
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography variant="h6" component="div">
+              ⭐⭐⭐⭐⭐
+            </Typography>
+            
+            <Button
+              variant="text"
+              color="primary"
+              sx={{ 
+                fontWeight: "bold", 
+                textDecoration: "underline",
+                fontSize: "1rem"
+              }}
+              onClick={() => {
+                // Aquí iría la lógica de redirección al otro frontend
+                // Ejemplo: window.location.href = "http://url-equipo-resenas.com/..."
+                alert("Redirigiendo al sistema de reseñas...");
+              }}
+            >
+              Ver Reseñas
+            </Button>
+          </Box>
+          {/* ---------------------------------- */}
+
         </Card>
 
         {/* BOTÓN EDITAR */}

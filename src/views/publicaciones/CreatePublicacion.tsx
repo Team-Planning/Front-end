@@ -211,11 +211,11 @@ const CreatePublicacion = () => {
       }));
 
       // Guardado extra local y NO enviado al backend
-      const extras = {
-        categoria: data.categoria,
-        producto: data.producto,
-        stock: data.stock,
-        tipoEntrega: data.tipoEntrega,
+const extras = {
+        categoriaMock: data.categoria,
+        productoMock: data.producto,
+        stockMock: data.stock,
+        tipoEntregaMock: data.tipoEntrega,
       };
 
       localStorage.setItem("publicacion_local_extra", JSON.stringify(extras));
