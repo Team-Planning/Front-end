@@ -383,7 +383,7 @@ curl -fsSL https://get.pnpm.io/install.sh | sh -
   ```bash
   pnpm dev
   ```
-  Esto iniciará el servidor de desarrollo en `http://localhost:5173`
+  Esto iniciará el servidor de desarrollo en `http://localhost:4041`
 
 - **Construcción para producción**:
   ```bash

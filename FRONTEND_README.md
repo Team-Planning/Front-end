@@ -138,7 +138,7 @@ pnpm install
 pnpm dev
 ```
 
-La aplicación estará disponible en: **http://localhost:5173**
+La aplicación estará disponible en: **http://localhost:4041**
 
 ### 3. Asegurarse que el Backend esté corriendo
 
@@ -296,11 +296,11 @@ El frontend está completamente funcional y conectado al backend. Todos los mock
 **Para empezar a usar:**
 1. Backend: `pnpm start:dev` en `GPI_BackTemplate`
 2. Frontend: `pnpm dev` en `GPI_FrontTemplate`
-3. Abrir http://localhost:5173
+3. Abrir http://localhost:4041
 4. Navegar a "Publicaciones" en el menú
 5. ¡Crear tu primera publicación!
 
-**URLs:**
-- Frontend: http://localhost:5173
+- **URLs:**
+- Frontend: http://localhost:4041
 - Backend API: http://localhost:3000/api
 - Prisma Studio: `pnpm prisma:studio` (puerto 5555)
