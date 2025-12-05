@@ -193,6 +193,14 @@ const publicacionesService = {
   },
 
   // ============================================================================
+  // CAMBIAR ESTADO DE PUBLICACIÓN
+  // ============================================================================
+  async cambiarEstado(id: string, estado: 'borrador' | 'en_revision' | 'activo' | 'pausado' | 'vendido' | 'rechazado' | 'eliminado') {
+    const res = await api.patch(`/publicaciones/${id}/estado`, { estado });
+    return res.data;
+  },
+
+  // ============================================================================
   // ELIMINAR PUBLICACIÓN (cambiar estado a eliminado)
   // ============================================================================
   async delete(id: string) {

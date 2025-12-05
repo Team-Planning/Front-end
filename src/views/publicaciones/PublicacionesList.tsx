@@ -132,7 +132,7 @@ export default function PublicacionesList() {
     try {
       if (restore) {
         // Restaurar publicación: cambiar estado a 'activo' en el backend
-        await publicacionesService.changeStatus(id, 'activo');
+        await publicacionesService.cambiarEstado(id, 'activo');
       } else {
         // Eliminar publicación: cambiar estado a 'eliminado' en el backend
         await publicacionesService.delete(id);
