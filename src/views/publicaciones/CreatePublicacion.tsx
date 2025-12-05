@@ -221,7 +221,8 @@ const extras = {
       localStorage.setItem("publicacion_local_extra", JSON.stringify(extras));
 
       const dto = {
-        id_vendedor: "demoStore123",
+        id_vendedor: 1,
+        id_tienda: 1,
         id_producto: data.producto,
         titulo: data.titulo,
         descripcion: data.descripcion,
