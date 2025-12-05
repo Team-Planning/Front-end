@@ -1,5 +1,4 @@
 import { Avatar, Box, Drawer, Typography } from "@mui/material";
-import logo from "../../../assets/EII_logo.png";
 import { JSX } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import pulgaShopLogo from "../../../assets/pulgaShop_logo.png";

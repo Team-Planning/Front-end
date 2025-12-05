@@ -110,15 +110,8 @@ const EditPublicacion = () => {
     precio: "",
   });
 
-  const [errors, setErrors] = useState({
-    categoria: "",
-    producto: "",
-    titulo: "",
-    descripcion: "",
-    stock: "",
-    tipoEntrega: "",
-    precio: "",
-  });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Estado de errores eliminado por no uso durante build de producción
 
   // ================================================================
   // CARGAR PUBLICACIÓN + EXTRA LOCAL
@@ -175,7 +168,7 @@ const EditPublicacion = () => {
   // ================================================================
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
+    // removed errors state; skip clearing field error
   };
 
   // ================================================================
@@ -344,7 +337,7 @@ const EditPublicacion = () => {
       ok = false;
     }
 
-    setErrors(newErrors);
+    // removed errors state; rely on snackbar messages
     return ok;
   };
 
