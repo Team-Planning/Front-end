@@ -54,9 +54,9 @@ const ESTADO_COLORS: Record<string, string> = {
   ELIMINADO: '#9E9E9E',
 };
 
-const normalizeEstadoKey = (estado?: string) => (estado ?? 'EN_REVISION').toString().toUpperCase().replace(/[_\s]/g, '');
+const normalizeEstadoKey = (estado?: string) => (estado ?? 'ACTIVO').toString().toUpperCase().replace(/[_\s]/g, '');
 const formatEstadoLabel = (estado?: string) => {
-  const text = (estado ?? 'EN_REVISION').toString().replace(/_/g, ' ');
+  const text = (estado ?? 'activo').toString().replace(/_/g, ' ');
   return text
     .split(' ')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())

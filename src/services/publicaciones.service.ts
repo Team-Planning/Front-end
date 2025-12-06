@@ -255,6 +255,14 @@ const publicacionesService = {
     map[idPublicacion] = idMultimedia;
     save(PORTADA_KEY, map);
   },
+
+  // ============================================================================
+  // OBTENER HISTORIAL DE MODERACIÓN
+  // ============================================================================
+  async getModeracion(id: string): Promise<any[]> {
+    const res = await api.get(`/publicaciones/${id}/moderacion`);
+    return res.data;
+  },
 };
 
 export default publicacionesService;

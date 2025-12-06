@@ -198,9 +198,11 @@ const CreatePublicacion = () => {
       setLoading(true);
       setUploadingImages(true);
 
+      console.log("Subiendo imágenes...", images.length);
       const uploaded = await uploadService.uploadMultipleImages(
         images.map((x) => x.file)
       );
+      console.log("Imágenes subidas:", uploaded);
 
       setUploadingImages(false);
 
@@ -221,9 +223,7 @@ const extras = {
       localStorage.setItem("publicacion_local_extra", JSON.stringify(extras));
 
       const dto = {
-        id_vendedor: 1,
-        id_tienda: 1,
-        id_producto: data.producto,
+        id_producto: "1",
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: Number(data.precio),
@@ -242,10 +242,12 @@ const extras = {
       setImages([]);
 
       setTimeout(() => navigate("/publicaciones"), 1000);
-    } catch (e) {
+    } catch (e: any) {
+      console.error("Error completo:", e);
+      const errorMsg = e?.response?.data?.message || e?.message || "Error al crear la publicación";
       setSnackbar({
         open: true,
-        message: "Error al crear la publicación",
+        message: errorMsg,
         severity: "error",
       });
     } finally {

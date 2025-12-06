@@ -110,6 +110,7 @@ const PublicacionDetail = () => {
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [motivoRechazo, setMotivoRechazo] = useState<string | null>(null);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -126,6 +127,18 @@ const PublicacionDetail = () => {
       setLoading(true);
       const data = await publicacionesService.getById(id!);
       setPublicacion(data);
+
+      // Si está rechazada, obtener el motivo
+      if (data.estado === 'rechazado') {
+        try {
+          const moderacion = await publicacionesService.getModeracion(id!);
+          if (moderacion && moderacion.length > 0) {
+            setMotivoRechazo(moderacion[0].motivo);
+          }
+        } catch (error) {
+          console.error("Error al obtener motivo de rechazo:", error);
+        }
+      }
 
       if (
         data.multimedia &&
@@ -337,6 +350,16 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
             </Box>
           )}
         </Card>
+
+        {/* ALERTA DE RECHAZO */}
+        {publicacion.estado === 'rechazado' && motivoRechazo && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+              Publicación Rechazada
+            </Typography>
+            <Typography variant="body2">{motivoRechazo}</Typography>
+          </Alert>
+        )}
 
         {/* INFORMACIÓN */}
         <Card sx={{ p: 2, borderRadius: 2 }}>
