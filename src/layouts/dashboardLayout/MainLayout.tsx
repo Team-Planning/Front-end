@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 // import useWindowDimensions from "../../scripts/useWindowDimensions"; // YA NO ES NECESARIO
 import HeaderGPI from "./menuHeader/HeaderGPI";
+import Footer from "../../components/Footer";
 
 function MainLayout() {
   // const { width } = useWindowDimensions(); // YA NO ES NECESARIO
@@ -13,9 +14,10 @@ function MainLayout() {
         <HeaderGPI isMobile /> 
 
         <main className="flex-1 overflow-y-auto">
-          <div className="flex-1 px-6 py-8 overflow-y-auto w-full max-h-screen  h-full">
+          <div className="flex-1 px-6 py-8 overflow-y-auto w-full h-full">
             {<Outlet />}
           </div>
+          <Footer />
         </main>
       </div>
     </div>

@@ -20,9 +20,9 @@ const theme = createTheme({
   palette: {
     // Cambiando la paleta principal
     primary: {
-      main: "#386641", // color base: verde oscuro solicitado
-      light: "#5a8a6a", // versión más clara
-      dark: "#274d36", // versión más oscura
+      main: "#00D563", // color base: verde PulgaShop
+      light: "#33de81", // versión más clara
+      dark: "#00a04d", // versión más oscura
       contrastText: "#ffffff",
     },
     // Cambiando la paleta secundaria
