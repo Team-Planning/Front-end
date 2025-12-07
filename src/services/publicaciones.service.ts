@@ -24,6 +24,7 @@ export interface Publicacion {
   id_producto: string;   
   categoria?: any;
   multimedia?: Multimedia[];
+  tipoEntrega?: string[];
 }
 
 // DTO oficial para actualizar

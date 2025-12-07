@@ -421,11 +421,10 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
             TIPO DE ENTREGA:
           </Typography>
           <Typography color="text.secondary">
-            {/* Leemos tipoEntregaMock */}
             {localExtra?.tipoEntregaMock?.join(", ") || "No especificado"}
           </Typography>
 
-          {/* PRECIO */}
+          {/* PRECIO - Oculto: Se obtendrá del microservicio de inventario */}
           <Typography
             variant="h6"
             sx={{
@@ -434,12 +433,11 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
               color: "primary.main",
             }}
           >
-            {/* Priorizamos el precio real de la publicación, luego el extra local */}
-            {(publicacion.precio || localExtra?.precio)
+            {publicacion.precio
               ? `PRECIO: ${new Intl.NumberFormat("es-CL", {
                   style: "currency",
                   currency: "CLP",
-                }).format(publicacion.precio || localExtra.precio)}`
+                }).format(publicacion.precio)}`
               : "PRECIO: No disponible"}
           </Typography>
 

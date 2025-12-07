@@ -107,7 +107,7 @@ const EditPublicacion = () => {
     descripcion: "",
     stock: "",
     tipoEntrega: [] as string[],
-    precio: "",
+    precio: "", // Inicialización del precio
   });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -364,7 +364,7 @@ const EditPublicacion = () => {
       const dto: UpdatePublicacionDto = {
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        ...(formData.precio !== "" ? { precio: Number(formData.precio) } : {}),
+        ...(formData.precio !== "" ? { precio: Number(formData.precio) } : {}), // Envío del precio al backend
       };
 
       await publicacionesService.update(id!, dto);
@@ -696,8 +696,8 @@ const EditPublicacion = () => {
             type="number"
             fullWidth
             sx={{ mb: 3 }}
-            value={formData.precio}
-            onChange={(e) => handleInputChange("precio", e.target.value)}
+            value={formData.precio} // Enlace del precio al formulario
+            onChange={(e) => handleInputChange("precio", e.target.value)} // Manejo del cambio del precio
             InputProps={{
               startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
               endAdornment:

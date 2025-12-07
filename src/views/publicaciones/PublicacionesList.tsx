@@ -298,7 +298,7 @@ export default function PublicacionesList() {
                         {pub.descripcion}
                       </Typography>
 
-                      {/* 🔹 Precio visible */}
+                      {/* Precio oculto - Se obtendrá del microservicio de inventario */}
                       <Typography
                         variant="h6"
                         sx={{
@@ -307,19 +307,9 @@ export default function PublicacionesList() {
                           mb: 2,
                         }}
                       >
-                        {
-                          (() => {
-                            const local = extrasMap[String(pub.id)];
-                            const rawPrice = local?.precio ?? pub.precio;
-                            if (rawPrice !== null && rawPrice !== undefined && rawPrice !== '') {
-                              const num = Number(rawPrice);
-                              if (!Number.isNaN(num)) {
-                                return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(num);
-                              }
-                            }
-                            return 'Sin precio';
-                          })()
-                        }
+                        {pub.precio
+                          ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(pub.precio)
+                          : 'Sin precio'}
                       </Typography>
 
 

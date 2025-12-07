@@ -98,7 +98,7 @@ const schema = yup.object({
     .array()
     .of(yup.string())
     .min(1, "Selecciona al menos un método de entrega"),
-  precio: yup.number().required().min(0),
+  precio: yup.number().required().min(0), // Validación habilitada para el precio
 });
 
 // ===============================================
@@ -135,7 +135,7 @@ const CreatePublicacion = () => {
       descripcion: "",
       stock: "",
       tipoEntrega: [],
-      precio: "",
+      precio: "", // Inicialización del precio
     },
   });
 
@@ -226,7 +226,7 @@ const extras = {
         id_producto: "1",
         titulo: data.titulo,
         descripcion: data.descripcion,
-        precio: Number(data.precio),
+        precio: Number(data.precio), // Envío del precio al backend
         multimedia,
       };
 
@@ -517,13 +517,13 @@ const extras = {
             )}
           />
 
-          {/* PRECIO */}
+          {/* PRECIO - Comentado: Se obtendrá del microservicio de inventario */}
           <TextField
             label="Precio"
             type="number"
             fullWidth
             sx={{ mb: 3 }}
-            {...register("precio")}
+            {...register("precio")} // Registro del campo precio
           />
 
           <Button
