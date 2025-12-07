@@ -153,21 +153,46 @@ export default function PublicacionesList() {
   
 
   return (
-    <Box sx={{ p: 3, backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2E7D32' }}>
+    <Box sx={{ p: 3, backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Typography 
+          variant="h3" 
+          sx={{ 
+            fontWeight: 700, 
+            color: 'primary.main',
+            letterSpacing: '-0.5px',
+            mb: 1
+          }}
+        >
           Mis Publicaciones
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Gestiona tus productos de forma simple y efectiva
         </Typography>
       </Box>
 
       {/* Filtros */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
         {['TODAS', 'ACTIVAS', 'REVISION', 'ELIMINADAS'].map((estado) => (
           <Button
             key={estado}
             variant={filter === estado ? 'contained' : 'outlined'}
             onClick={() => setFilter(estado as any)}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
+            sx={{ 
+              textTransform: 'none', 
+              fontWeight: 600,
+              borderRadius: '20px',
+              px: 3,
+              py: 1,
+              fontSize: '15px',
+              border: filter === estado ? 'none' : '2px solid',
+              borderColor: 'primary.main',
+              color: filter === estado ? 'white' : 'primary.main',
+              '&:hover': {
+                backgroundColor: filter === estado ? 'primary.dark' : 'rgba(76, 175, 80, 0.08)',
+                borderColor: 'primary.main',
+              }
+            }}
           >
             {estado === 'TODAS'
               ? 'Todas'
@@ -181,7 +206,7 @@ export default function PublicacionesList() {
       </Box>
 
       {/* Buscador + Crear */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 4, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, alignItems: 'center', maxWidth: '1200px', mx: 'auto' }}>
         <TextField
           placeholder="Buscar publicaciones..."
           value={searchTerm}
@@ -189,18 +214,19 @@ export default function PublicacionesList() {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon />
+                <SearchIcon sx={{ color: 'primary.main' }} />
               </InputAdornment>
             ),
           }}
           sx={{
             flex: 1,
             backgroundColor: 'white',
-            borderRadius: 2,
+            borderRadius: '25px',
             '& .MuiOutlinedInput-root': {
+              borderRadius: '25px',
               '& fieldset': { borderColor: '#E0E0E0' },
               '&:hover fieldset': { borderColor: 'primary.main' },
-              '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+              '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '2px' },
             },
           }}
         />
@@ -213,10 +239,16 @@ export default function PublicacionesList() {
             backgroundColor: 'primary.main',
             borderRadius: '25px',
             textTransform: 'none',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            padding: '10px 18px',
-            '&:hover': { backgroundColor: 'primary.dark' },
+            fontSize: '15px',
+            fontWeight: 700,
+            padding: '12px 24px',
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+            '&:hover': { 
+              backgroundColor: 'primary.dark',
+              boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+              transform: 'translateY(-2px)',
+            },
+            transition: 'all 0.3s ease',
           }}
         >
           Crear Publicación
@@ -249,15 +281,20 @@ export default function PublicacionesList() {
                   <Card
                     onClick={() => navigate(`/publicaciones/${pub.id}`)}
                     sx={{
-                      height: 550, // 🔹 más alargada
+                      height: 550,
                       display: 'flex',
                       flexDirection: 'column',
-                      borderRadius: 3,
-                      boxShadow: 3,
+                      borderRadius: 4,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                       position: 'relative',
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      backgroundColor: 'white',
+                      overflow: 'hidden',
+                      '&:hover': { 
+                        transform: 'translateY(-8px)', 
+                        boxShadow: '0 12px 24px rgba(0,0,0,0.15)' 
+                      },
                     }}
                   >
                     {/* Imagen */}

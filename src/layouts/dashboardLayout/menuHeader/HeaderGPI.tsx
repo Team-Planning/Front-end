@@ -87,36 +87,20 @@ function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
   return (
     <>
       {isMobile ? (
- <nav>
-          {/* CAMBIO DE ESTILO: Color de fondo y padding */}
-          {/* De h-16 w-full bg-(--color-darkgreen) a una barra superior más clara con padding */}
-          <div className="h-16 w-full bg-white shadow-md">
-            <div className="flex w-full h-full items-center justify-between p-4 py-0">
+        <nav>
+          <div className="h-16 w-full" style={{ backgroundColor: theme.palette.primary.main }}>
+            <div className="flex w-full h-full items-center justify-center px-4 relative">
               
-              {/* Nuevo: Logo + Título a la izquierda */}
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => redirectTo('/home')}>
-                <img src={logo} alt="logo" className="h-8 w-8" />
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 'bold',
-                    color: theme.palette.primary.main, // usar color del theme
-                  }}
-                >
-                  PULGASHOP
-                </Typography>
-              </div>
-
-              {/* Contenedor del ícono de hamburguesa */}
+              {/* Ícono de menú hamburguesa en blanco - izquierda */}
               <div
                 onClick={openMenuAction}
-                className="cursor-pointer p-2 text-black hover:bg-gray-100 rounded-full" // Ícono de hamburguesa en color oscuro
+                className="cursor-pointer p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-md transition-all absolute left-4"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   stroke="currentColor"
                   className="size-6"
                 >
@@ -126,6 +110,11 @@ function HeaderGPI({ isMobile = false }: HeaderGPIProps) {
                     d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
                   />
                 </svg>
+              </div>
+
+              {/* Logo centrado */}
+              <div className="flex items-center cursor-pointer" onClick={() => redirectTo('/home')}>
+                <img src={logo} alt="logo" className="h-12 w-auto" />
               </div>
             </div>
           </div>
