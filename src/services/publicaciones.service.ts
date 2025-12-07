@@ -85,7 +85,34 @@ const publicacionesService = {
   // ============================================================================
   async getAll(params: any = {}) {
     const res = await api.get("/publicaciones", { params });
-    return res.data;
+    const publicaciones = res.data;
+
+    // ---- aplicar portada local a cada publicación ----
+    const portadaMap = load(PORTADA_KEY);
+    const orderMap = load(ORDER_KEY);
+    
+    publicaciones.forEach((pub: any) => {
+      if (!pub.multimedia) pub.multimedia = [];
+      
+      // ---- aplicar portada local (IGUAL QUE getById) ----
+      if (portadaMap[pub.id]) {
+        pub.multimedia.sort((a: any, b: any) =>
+          a.id === portadaMap[pub.id] ? -1 : b.id === portadaMap[pub.id] ? 1 : 0
+        );
+      }
+      
+      // ---- aplicar orden local (IGUAL QUE getById) ----
+      if (orderMap[pub.id]) {
+        const order = orderMap[pub.id];
+        pub.multimedia.sort((a: any, b: any) => {
+          const ia = order.indexOf(a.id);
+          const ib = order.indexOf(b.id);
+          return ia - ib;
+        });
+      }
+    });
+
+    return publicaciones;
   },
 
   // ============================================================================
@@ -210,9 +237,13 @@ const publicacionesService = {
   },
 
   // ============================================================================
-  // ELIMINAR MULTIMEDIA (local, no backend)
+  // ELIMINAR MULTIMEDIA (backend + local)
   // ============================================================================
   async deleteMultimedia(idMedia: string) {
+    // Eliminar del backend (BD + Cloudinary)
+    await api.delete(`/publicaciones/multimedia/${idMedia}`);
+    
+    // Marcar como eliminado en localStorage también
     const map = load(DELETE_MEDIA_KEY);
     map[idMedia] = true;
     save(DELETE_MEDIA_KEY, map);
@@ -240,21 +271,52 @@ const publicacionesService = {
   },
 
   // ============================================================================
-  // ORDENAR MULTIMEDIA (local)
+  // ORDENAR MULTIMEDIA (backend + local)
   // ============================================================================
   async setMultimediaOrderLocal(idPublicacion: string, ids: string[]) {
+    // Guardar en backend
+    await api.patch(`/publicaciones/${idPublicacion}/multimedia/orden`, { orden: ids });
+    
+    // Guardar en localStorage también para persistencia temporal
     const map = load(ORDER_KEY);
     map[idPublicacion] = ids;
     save(ORDER_KEY, map);
   },
 
   // ============================================================================
-  // PORTADA (local)
+  // PORTADA (backend + local)
   // ============================================================================
   async setPortadaLocal(idPublicacion: string, idMultimedia: string) {
-    const map = load(PORTADA_KEY);
-    map[idPublicacion] = idMultimedia;
-    save(PORTADA_KEY, map);
+    try {
+      // Obtener la publicación para tener todas las imágenes
+      const pub = await this.getById(idPublicacion);
+      
+      // Obtener el orden actual o crear uno con todas las imágenes
+      const orderMap = load(ORDER_KEY);
+      let currentOrder = orderMap[idPublicacion];
+      
+      if (!currentOrder || currentOrder.length === 0) {
+        // Si no hay orden previo, usar el orden actual de las imágenes de la publicación
+        currentOrder = (pub.multimedia || []).map((m: any) => m.id);
+      }
+      
+      // Mover la imagen seleccionada al inicio (posición 0 = portada)
+      const newOrder = [idMultimedia, ...currentOrder.filter((id: string) => id !== idMultimedia)];
+      
+      // Guardar el nuevo orden en el backend
+      await api.patch(`/publicaciones/${idPublicacion}/multimedia/orden`, { orden: newOrder });
+      
+      // Guardar en localStorage también
+      const portadaMap = load(PORTADA_KEY);
+      portadaMap[idPublicacion] = idMultimedia;
+      save(PORTADA_KEY, portadaMap);
+      
+      orderMap[idPublicacion] = newOrder;
+      save(ORDER_KEY, orderMap);
+    } catch (error) {
+      console.error('Error al definir portada:', error);
+      throw error;
+    }
   },
 
   // ============================================================================

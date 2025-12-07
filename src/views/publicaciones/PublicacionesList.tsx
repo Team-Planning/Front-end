@@ -12,7 +12,6 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Skeleton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -28,6 +27,7 @@ import {
   RestoreFromTrash as RestoreIcon,
 } from '@mui/icons-material';
 import publicacionesService, { Publicacion } from '../../services/publicaciones.service';
+import TiendaSelector from '../../components/TiendaSelector';
 
 // MOCK DE CATEGORÍAS (Solo Frontend) - reutilizado para mostrar nombre desde key
 const mockCategorias = [
@@ -63,14 +63,20 @@ const formatEstadoLabel = (estado?: string) => {
     .join(' ');
 };
 
+const tiendas = [
+  { id: 1, nombre: 'Tienda Demo 1' },
+  { id: 2, nombre: 'Tienda Demo 2' },
+];
+
 export default function PublicacionesList() {
   const navigate = useNavigate();
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'TODAS' | 'ACTIVAS' | 'REVISION' | 'ELIMINADAS'>('TODAS');
   const [deleteDialog, setDeleteDialog] = useState<any>({ open: false, id: null, restore: false });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [idTienda, setIdTienda] = useState<number>(1); // Default tienda 1
+  const [nombreTienda, setNombreTienda] = useState<string>('Tienda Demo 1');
 
   useEffect(() => {
     loadPublicaciones();
@@ -92,13 +98,24 @@ export default function PublicacionesList() {
 
   const loadPublicaciones = async () => {
     try {
-      setLoading(true);
+      // Obtener lista básica de publicaciones
       const data = await publicacionesService.getAll({ includeEliminadas: true });
-      setPublicaciones(data);
+      
+      // Cargar cada publicación con getById (IGUAL QUE DETAIL) para obtener el orden correcto
+      const publicacionesConOrden = await Promise.all(
+        data.map(async (pub: any) => {
+          try {
+            return await publicacionesService.getById(pub.id);
+          } catch (error) {
+            console.error(`Error cargando pub ${pub.id}:`, error);
+            return pub; // Si falla, usar los datos básicos
+          }
+        })
+      );
+      
+      setPublicaciones(publicacionesConOrden);
     } catch (error) {
       console.error('Error al cargar publicaciones:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -115,7 +132,11 @@ export default function PublicacionesList() {
     const titulo = pub.titulo?.toLowerCase() || '';
     const descripcion = pub.descripcion?.toLowerCase() || '';
     const search = searchTerm.toLowerCase();
-    return matchesStatus(pub) && (titulo.includes(search) || descripcion.includes(search));
+    
+    // Filtrar por tienda seleccionada
+    const matchesTienda = (pub as any).id_tienda === idTienda;
+    
+    return matchesTienda && matchesStatus(pub) && (titulo.includes(search) || descripcion.includes(search));
   });
 
   const handleDelete = (id: string) => {
@@ -150,294 +171,309 @@ export default function PublicacionesList() {
 
   const handleCreateNew = () => navigate('/publicaciones/crear');
 
-  
+  const handleTiendaSeleccionada = (id: number) => {
+    setIdTienda(id);
+    const tienda = tiendas.find((t) => t.id === id);
+    setNombreTienda(tienda ? tienda.nombre : '');
+  };
 
   return (
-    <Box sx={{ p: 3, backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography 
-          variant="h3" 
-          sx={{ 
-            fontWeight: 700, 
-            color: 'primary.main',
-            letterSpacing: '-0.5px',
-            mb: 1
-          }}
-        >
-          Mis Publicaciones
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Gestiona tus productos de forma simple y efectiva
-        </Typography>
-      </Box>
-
-      {/* Filtros */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {['TODAS', 'ACTIVAS', 'REVISION', 'ELIMINADAS'].map((estado) => (
-          <Button
-            key={estado}
-            variant={filter === estado ? 'contained' : 'outlined'}
-            onClick={() => setFilter(estado as any)}
-            sx={{ 
-              textTransform: 'none', 
-              fontWeight: 600,
-              borderRadius: '20px',
-              px: 3,
-              py: 1,
-              fontSize: '15px',
-              border: filter === estado ? 'none' : '2px solid',
-              borderColor: 'primary.main',
-              color: filter === estado ? 'white' : 'primary.main',
-              '&:hover': {
-                backgroundColor: filter === estado ? 'primary.dark' : 'rgba(76, 175, 80, 0.08)',
-                borderColor: 'primary.main',
-              }
+    <Box>
+      {/* Contenido principal */}
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 700,
+              color: 'primary.main',
+              letterSpacing: '-0.5px',
+              mb: 1,
             }}
           >
-            {estado === 'TODAS'
-              ? 'Todas'
-              : estado === 'ACTIVAS'
-              ? 'Activas'
-              : estado === 'REVISION'
-              ? 'En revisión'
-              : 'Eliminadas'}
-          </Button>
-        ))}
-      </Box>
+            {nombreTienda ? `Publicaciones de ${nombreTienda}` : 'Mis Publicaciones'}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Gestiona tus productos de forma simple y efectiva
+          </Typography>
+        </Box>
 
-      {/* Buscador + Crear */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 4, alignItems: 'center', maxWidth: '1200px', mx: 'auto' }}>
-        <TextField
-          placeholder="Buscar publicaciones..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: 'primary.main' }} />
-              </InputAdornment>
-            ),
-          }}
+        {/* Filtros */}
+        <Box
           sx={{
-            flex: 1,
-            backgroundColor: 'white',
-            borderRadius: '25px',
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '25px',
-              '& fieldset': { borderColor: '#E0E0E0' },
-              '&:hover fieldset': { borderColor: 'primary.main' },
-              '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '2px' },
-            },
-          }}
-        />
-
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreateNew}
-          sx={{
-            backgroundColor: 'primary.main',
-            borderRadius: '25px',
-            textTransform: 'none',
-            fontSize: '15px',
-            fontWeight: 700,
-            padding: '12px 24px',
-            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
-            '&:hover': { 
-              backgroundColor: 'primary.dark',
-              boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
-              transform: 'translateY(-2px)',
-            },
-            transition: 'all 0.3s ease',
+            display: 'flex',
+            gap: 2,
+            mb: 4,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          Crear Publicación
-        </Button>
-      </Box>
-
-      {/* Publicaciones */}
-      {loading ? (
-        <Grid container spacing={3}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Grid item xs={12} sm={6} md={4} key={`skeleton-${i}`}>
-              <Card sx={{ height: 550, borderRadius: 3 }}>
-                <Skeleton variant="rectangular" height={260} />
-                <CardContent>
-                  <Skeleton width="60%" height={30} />
-                  <Skeleton width="90%" height={16} sx={{ my: 1 }} />
-                  <Skeleton width="40%" height={24} />
-                </CardContent>
-              </Card>
-            </Grid>
+          <Box
+            sx={{
+              width: 'auto',
+              minWidth: '150px',
+              borderRadius: '20px',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              backgroundColor: 'white',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '20px',
+                '& fieldset': { borderColor: 'transparent' },
+                '&:hover fieldset': { borderColor: 'primary.main' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '2px' },
+              },
+            }}
+          >
+            <TiendaSelector onTiendaSeleccionada={handleTiendaSeleccionada} />
+          </Box>
+          {['TODAS', 'ACTIVAS', 'REVISION', 'ELIMINADAS'].map((estado) => (
+            <Button
+              key={estado}
+              variant={filter === estado ? 'contained' : 'outlined'}
+              onClick={() => setFilter(estado as any)}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: '20px',
+                px: 3,
+                py: 1,
+                fontSize: '15px',
+                border: filter === estado ? 'none' : '2px solid',
+                borderColor: 'primary.main',
+                color: filter === estado ? 'white' : 'primary.main',
+                backgroundColor: filter === estado ? 'primary.main' : 'white',
+                '&:hover': {
+                  backgroundColor: filter === estado ? 'primary.dark' : 'rgba(76, 175, 80, 0.08)',
+                  borderColor: 'primary.main',
+                },
+              }}
+            >
+              {estado === 'TODAS'
+                ? 'Todas'
+                : estado === 'ACTIVAS'
+                ? 'Activas'
+                : estado === 'REVISION'
+                ? 'En revisión'
+                : 'Eliminadas'}
+            </Button>
           ))}
-        </Grid>
-      ) : (
-        <>
+        </Box>
+
+        {/* Buscador + Crear */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 4, alignItems: 'center', maxWidth: '1200px', mx: 'auto' }}>
+          <TextField
+            placeholder="Buscar publicaciones..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'primary.main' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              flex: 1,
+              backgroundColor: 'white',
+              borderRadius: '25px',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '25px',
+                '& fieldset': { borderColor: '#E0E0E0' },
+                '&:hover fieldset': { borderColor: 'primary.main' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '2px' },
+              },
+            }}
+          />
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreateNew}
+            sx={{
+              backgroundColor: 'primary.main',
+              borderRadius: '25px',
+              textTransform: 'none',
+              fontSize: '15px',
+              fontWeight: 700,
+              padding: '12px 24px',
+              boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+                boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+                transform: 'translateY(-2px)',
+              },
+              transition: 'all 0.3s ease',
+            }}
+          >
+            Crear Publicación
+          </Button>
+        </Box>
+
+        {/* Publicaciones */}
+        <Box sx={{ p: 2, maxWidth: '1200px', mx: 'auto' }}>
           <Grid container spacing={3}>
-            {filteredPublicaciones.map((pub) => {
-              const isEliminada = (pub.estado || '').toUpperCase().includes('ELIMIN');
-              return (
-                <Grid item xs={12} sm={6} md={4} key={pub.id}>
-                  <Card
-                    onClick={() => navigate(`/publicaciones/${pub.id}`)}
-                    sx={{
-                      height: 550,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      borderRadius: 4,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                      position: 'relative',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      backgroundColor: 'white',
-                      overflow: 'hidden',
-                      '&:hover': { 
-                        transform: 'translateY(-8px)', 
-                        boxShadow: '0 12px 24px rgba(0,0,0,0.15)' 
-                      },
-                    }}
-                  >
-                    {/* Imagen */}
-                    <Box sx={{ width: '100%', height: 260, overflow: 'hidden' }}>
-                      <CardMedia
-                        component="img"
-                          image={pub.multimedia?.find((m) => !m.eliminado)?.url || '/placeholder.jpg'}
-                        alt={pub.titulo}
-                        loading="lazy"
+            {filteredPublicaciones.map((pub) => (
+              <Grid item xs={12} sm={6} md={4} key={pub.id}>
+                <Card
+                  onClick={() => navigate(`/publicaciones/${pub.id}`)}
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: 4,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-5px)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    },
+                  }}
+                >
+                  {/* Imagen */}
+                  <Box sx={{ width: '100%', height: 0, paddingTop: '56.25%', position: 'relative' }}>
+                    <CardMedia
+                      component="img"
+                      image={(() => {
+                        // Usar exactamente la misma lógica que Detail: primera imagen del array (ya ordenado por getById)
+                        const multimedia = pub.multimedia || [];
+                        return multimedia.length > 0 ? multimedia[0].url : '/placeholder.jpg';
+                      })()}
+                      alt={pub.titulo}
+                      loading="lazy"
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        borderRadius: '4px 4px 0 0',
+                      }}
+                    />
+                  </Box>
+
+                  {/* Contenido */}
+                  <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1 }}>
+                      {pub.titulo}
+                    </Typography>
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mb: 2,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                    >
+                      {pub.descripcion}
+                    </Typography>
+
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: '#1B5E20',
+                        fontWeight: 'bold',
+                        mb: 2,
+                      }}
+                    >
+                      {pub.precio
+                        ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(pub.precio)
+                        : 'Sin precio'}
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Chip
+                        label={
+                          (() => {
+                            const local = extrasMap[String(pub.id)];
+                            if (local && local.categoriaMock) return getCategoriaNombre(local.categoriaMock);
+                            return pub.categoria?.nombre || 'Sin categoría';
+                          })()
+                        }
+                        size="small"
+                        sx={{ bgcolor: '#E8F5E9', color: 'primary.main', fontWeight: 600 }}
+                      />
+                      <Chip
+                        label={formatEstadoLabel(pub.estado)}
+                        size="small"
                         sx={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'center',
-                          filter: isEliminada ? 'grayscale(100%)' : 'none',
+                          bgcolor: ESTADO_COLORS[normalizeEstadoKey(pub.estado)] || '#BDBDBD',
+                          color: 'white',
+                          fontWeight: 600,
                         }}
                       />
                     </Box>
+                  </CardContent>
 
-                    {/* Contenido */}
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1 }}>
-                        {pub.titulo}
-                      </Typography>
-
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1, p: 2 }}>
+                    {pub.estado !== 'eliminado' ? (
+                      <IconButton
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(pub.id!);
+                        }}
                         sx={{
-                          mb: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
+                          backgroundColor: '#FEECEC',
+                          '&:hover': { backgroundColor: '#FFCDD2' },
                         }}
                       >
-                        {pub.descripcion}
-                      </Typography>
-
-                      {/* Precio oculto - Se obtendrá del microservicio de inventario */}
-                      <Typography
-                        variant="h6"
+                        <DeleteIcon />
+                      </IconButton>
+                    ) : (
+                      <IconButton
+                        color="success"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestore(pub.id!);
+                        }}
                         sx={{
-                          color: '#1B5E20',
-                          fontWeight: 'bold',
-                          mb: 2,
+                          backgroundColor: '#E8F5E9',
+                          '&:hover': { backgroundColor: '#C8E6C9' },
                         }}
                       >
-                        {pub.precio
-                          ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(pub.precio)
-                          : 'Sin precio'}
-                      </Typography>
-
-
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Chip
-                          label={
-                            (() => {
-                              const local = extrasMap[String(pub.id)];
-                              if (local && local.categoriaMock) return getCategoriaNombre(local.categoriaMock);
-                              return pub.categoria?.nombre || 'Sin categoría';
-                            })()
-                          }
-                          size="small"
-                          sx={{ bgcolor: '#E8F5E9', color: 'primary.main', fontWeight: 600 }}
-                        />
-                        <Chip
-                          label={formatEstadoLabel(pub.estado)}
-                          size="small"
-                          sx={{
-                            bgcolor: ESTADO_COLORS[normalizeEstadoKey(pub.estado)] || '#BDBDBD',
-                            color: 'white',
-                            fontWeight: 600,
-                          }}
-                        />
-                      </Box>
-
-                      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                        {!isEliminada ? (
-                          <IconButton
-                            color="error"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(pub.id!);
-                            }}
-                            sx={{
-                              backgroundColor: '#FEECEC',
-                              '&:hover': { backgroundColor: '#FFCDD2' },
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        ) : (
-                          <IconButton
-                            color="success"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRestore(pub.id!);
-                            }}
-                            sx={{
-                              backgroundColor: '#E8F5E9',
-                              '&:hover': { backgroundColor: '#C8E6C9' },
-                            }}
-                          >
-                            <RestoreIcon />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            })}
+                        <RestoreIcon />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
+        </Box>
 
-          {/* Dialog de confirmación para eliminar/restaurar */}
-          <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, restore: false })}>
-            <DialogTitle>{deleteDialog.restore ? 'Restaurar publicación' : 'Eliminar publicación'}</DialogTitle>
-            <DialogContent>
-              <DialogContentText>
-                {deleteDialog.restore
-                  ? '¿Estás seguro que deseas restaurar esta publicación?'
-                  : '¿Estás seguro que deseas mover esta publicación a Eliminadas?'}
-              </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDeleteDialog({ open: false, id: null, restore: false })} sx={{ color: '#757575' }}>
-                Cancelar
-              </Button>
-              <Button onClick={confirmChangeState} sx={{ color: deleteDialog.restore ? 'primary.main' : '#EF5350', fontWeight: 'bold' }}>
-                Confirmar
-              </Button>
-            </DialogActions>
-          </Dialog>
+        {/* Dialog de confirmación para eliminar/restaurar */}
+        <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, restore: false })}>
+          <DialogTitle>{deleteDialog.restore ? 'Restaurar publicación' : 'Eliminar publicación'}</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {deleteDialog.restore
+                ? '¿Estás seguro que deseas restaurar esta publicación?'
+                : '¿Estás seguro que deseas mover esta publicación a Eliminadas?'}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialog({ open: false, id: null, restore: false })} sx={{ color: '#757575' }}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmChangeState} sx={{ color: deleteDialog.restore ? 'primary.main' : '#EF5350', fontWeight: 'bold' }}>
+              Confirmar
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-          <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-            <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-              {snackbar.message}
-            </Alert>
-          </Snackbar>
-        </>
-      )}
+        <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+          <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Box>
     </Box>
   );
 }

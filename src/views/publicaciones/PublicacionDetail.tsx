@@ -16,10 +16,10 @@ import {
 import {
   ArrowBack as ArrowBackIcon,
   Edit as EditIcon,
-  Share as ShareIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
-  PersonAdd as PersonAddIcon,
+  Person as PersonIcon,
+  Storefront as StorefrontIcon,
 } from "@mui/icons-material";
 
 import publicacionesService, {
@@ -138,6 +138,9 @@ const PublicacionDetail = () => {
         } catch (error) {
           console.error("Error al obtener motivo de rechazo:", error);
         }
+      } else {
+        // Limpiar el motivo si no está rechazada
+        setMotivoRechazo(null);
       }
 
       if (
@@ -160,14 +163,6 @@ const PublicacionDetail = () => {
 
  const handleEdit = () => {
     navigate(`/publicaciones/editar/${id}`);
-  };
-
-  const handleShare = () => {
-    setSnackbar({
-      open: true,
-      message: "Enlace copiado al portapapeles",
-      severity: "success",
-    });
   };
 
   // =====================================================
@@ -194,7 +189,7 @@ const extrasRaw = localStorage.getItem("publicacion_extras");
 const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
 
   const localExtra =
-    extrasMap[String(publicacion?.id_producto)] || null;
+    extrasMap[String(publicacion?.id)] || null;
 
   if (loading) {
     return (
@@ -225,26 +220,94 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
   const multimedia = publicacion.multimedia || [];
   const hasMultipleImages = multimedia.length > 1;
 
+  const styles = {
+    header: {
+      backgroundColor: "primary.main",
+      color: "white",
+      padding: "16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      zIndex: 1000,
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    },
+    content: {
+      marginTop: "80px", // Adjust for the fixed header height
+      padding: "16px",
+      marginLeft: "auto",
+      marginRight: "auto",
+      maxWidth: "800px", // Limit the maximum width
+      '@media (max-width: 600px)': {
+        padding: "8px",
+        maxWidth: "100%", // Use full width on small screens
+      },
+    },
+    card: {
+      padding: "16px",
+      borderRadius: "12px",
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+      marginBottom: "24px",
+      backgroundColor: "#fff",
+      maxWidth: "100%", // Ensure cards fit within the content width
+      '@media (max-width: 600px)': {
+        padding: "12px",
+        marginBottom: "16px",
+      },
+    },
+    imageContainer: {
+      position: "relative",
+      height: "350px",
+      borderRadius: "12px",
+      overflow: "hidden",
+      marginBottom: "24px",
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+      '@media (max-width: 600px)': {
+        height: "250px",
+      },
+    },
+    image: {
+      width: "100%",
+      height: "100%",
+      objectFit: "contain" as "contain", // Explicitly cast to the expected type
+    },
+    chip: {
+      marginTop: "16px",
+      backgroundColor: "#999",
+      color: "white",
+      fontWeight: "bold",
+      '@media (max-width: 600px)': {
+        marginTop: "12px",
+      },
+    },
+    sectionTitle: {
+      marginTop: "16px",
+      fontWeight: "bold",
+      color: "#333",
+      '@media (max-width: 600px)': {
+        marginTop: "12px",
+        fontSize: "14px",
+      },
+    },
+    sectionContent: {
+      color: "#555",
+      '@media (max-width: 600px)': {
+        fontSize: "14px",
+      },
+    },
+  };
+
   return (
-    <Box sx={{ backgroundColor: "#fff", minHeight: "100vh", pb: 3 }}>
+    <Box sx={{ backgroundColor: "#f9f9f9", minHeight: "100vh" }}>
       {/* HEADER */}
-      <Box
-        sx={{
-          backgroundColor: "primary.main",
-          color: "white",
-          p: 2,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "calc(100% + 48px)",
-          marginLeft: "-24px",
-          marginRight: "-24px",
-        }}
-      >
+      <Box sx={styles.header}>
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <IconButton
             onClick={() => navigate("/publicaciones")}
-            sx={{ color: "white", mr: 2 }}
+            sx={{ color: "white", marginRight: "16px" }}
           >
             <ArrowBackIcon />
           </IconButton>
@@ -254,18 +317,15 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
         </Box>
       </Box>
 
-      <Box sx={{ maxWidth: 600, mx: "auto", p: 2 }}>
+      <Box sx={styles.content}>
         {/* GALERÍA */}
-        <Card sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
-          <Box sx={{ position: "relative", height: 350 }}>
+        <Card sx={styles.card}>
+          <Box sx={styles.imageContainer}>
             {multimedia.length ? (
               <img
                 src={multimedia[currentImageIndex].url}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
+                alt="Publicación"
+                style={styles.image}
               />
             ) : (
               <Box
@@ -279,18 +339,6 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
                 <Typography>No hay imágenes</Typography>
               </Box>
             )}
-
-            <IconButton
-              onClick={handleShare}
-              sx={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                backgroundColor: "rgba(255,255,255,0.8)",
-              }}
-            >
-              <ShareIcon />
-            </IconButton>
 
             {hasMultipleImages && (
               <>
@@ -324,170 +372,135 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
               </>
             )}
           </Box>
-
-          {/* INDICADORES */}
-          {multimedia.length > 0 && (
-            <Box sx={{ textAlign: "center", py: 1 }}>
-              {multimedia.map((_, idx) => (
-                <Box
-                  key={idx}
-                  sx={{
-                    display: "inline-block",
-                    width: 8,
-                    height: 8,
-                    mx: 0.3,
-                    borderRadius: "50%",
-                    backgroundColor:
-                      idx === currentImageIndex
-                        ? "primary.main"
-                        : "#ccc",
-                  }}
-                />
-              ))}
-              <Typography variant="caption" sx={{ display: "block" }}>
-                {currentImageIndex + 1}/{multimedia.length}
-              </Typography>
-            </Box>
-          )}
         </Card>
 
-        {/* ALERTA DE RECHAZO */}
-        {publicacion.estado === 'rechazado' && motivoRechazo && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-              Publicación Rechazada
-            </Typography>
-            <Typography variant="body2">{motivoRechazo}</Typography>
-          </Alert>
-        )}
+        {/* INFORMACIÓN DE VENDEDOR Y TIENDA */}
+        <Card sx={{ 
+          mb: 3, 
+          p: 2.5,
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fff9 100%)',
+          border: '1px solid rgba(0, 213, 99, 0.2)',
+          boxShadow: '0 2px 8px rgba(0, 213, 99, 0.08)',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%', 
+                bgcolor: 'rgba(0, 213, 99, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(0, 213, 99, 0.25)',
+              }}>
+                <PersonIcon sx={{ color: '#00A84F', fontSize: '1.3rem' }} />
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Vendedor
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#00A84F', fontWeight: 600, fontSize: '0.95rem' }}>
+                  {publicacion.id_vendedor || "Vendedor 1"}
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Box sx={{ 
+              width: '1px', 
+              height: '40px', 
+              bgcolor: 'rgba(0, 213, 99, 0.2)',
+              display: { xs: 'none', sm: 'block' }
+            }} />
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%', 
+                bgcolor: 'rgba(0, 213, 99, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(0, 213, 99, 0.25)',
+              }}>
+                <StorefrontIcon sx={{ color: '#00A84F', fontSize: '1.3rem' }} />
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Tienda
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#00A84F', fontWeight: 600, fontSize: '0.95rem' }}>
+                  Tienda Demo 1
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Card>
 
         {/* INFORMACIÓN */}
-        <Card sx={{ p: 2, borderRadius: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <PersonAddIcon sx={{ color: "primary.main" }} />
-            <Typography variant="caption">1 interesado</Typography>
-          </Box>
+        <Card sx={styles.card}>
+          {/* MOTIVO DE RECHAZO */}
+          {publicacion.estado === 'rechazado' && motivoRechazo && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                Motivo del rechazo:
+              </Typography>
+              <Typography variant="body2">
+                {motivoRechazo}
+              </Typography>
+            </Alert>
+          )}
 
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: "bold", color: "primary.main", mt: 1 }}
-          >
+          <Typography variant="h5" sx={{ fontWeight: "bold", color: "primary.main", mb: 2 }}>
             {publicacion.titulo}
           </Typography>
 
-          <Typography variant="caption" sx={{ color: "#666" }}>
-            VENDIDO POR {publicacion.id_vendedor}
-          </Typography>
+          <Typography sx={styles.sectionTitle}>Descripción:</Typography>
+          <Typography sx={styles.sectionContent}>{publicacion.descripcion}</Typography>
 
-          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
-            DESCRIPCIÓN:
-          </Typography>
-          <Typography color="text.secondary">
-            {publicacion.descripcion}
-          </Typography>
-
-          {/* --- PRODUCTO --- */}
-          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
-            PRODUCTO:
-          </Typography>
-          <Typography color="text.secondary">
-            {/* Intentamos obtenerlo del extra local o directamente del id_producto de la publicación */}
+          <Typography sx={styles.sectionTitle}>Producto:</Typography>
+          <Typography sx={styles.sectionContent}>
             {getProductoNombre(localExtra?.producto || publicacion.id_producto)}
           </Typography>
-          {/* --------------------------- */}
 
-{/* CATEGORÍA */}
-          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
-            CATEGORÍA:
-          </Typography>
-          <Typography color="text.secondary">
-            {/* Leemos categoriaMock */}
+          <Typography sx={styles.sectionTitle}>Categoría:</Typography>
+          <Typography sx={styles.sectionContent}>
             {localExtra?.categoriaMock
               ? getCategoriaNombre(localExtra.categoriaMock)
               : "No especificado"}
           </Typography>
 
-          {/* STOCK */}
-          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
-            STOCK:
-          </Typography>
-          <Typography color="text.secondary">
-            {/* Leemos stockMock */}
-            {localExtra?.stockMock ?? "No especificado"}
-          </Typography>
-
-          {/* ENTREGA */}
-          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
-            TIPO DE ENTREGA:
-          </Typography>
-          <Typography color="text.secondary">
+          <Typography sx={styles.sectionTitle}>Tipo de entrega:</Typography>
+          <Typography sx={styles.sectionContent}>
             {localExtra?.tipoEntregaMock?.join(", ") || "No especificado"}
           </Typography>
 
-          {/* PRECIO - Oculto: Se obtendrá del microservicio de inventario */}
           <Typography
             variant="h6"
             sx={{
-              mt: 3,
+              marginTop: "24px",
               fontWeight: "bold",
               color: "primary.main",
             }}
           >
             {publicacion.precio
-              ? `PRECIO: ${new Intl.NumberFormat("es-CL", {
+              ? `Precio: ${new Intl.NumberFormat("es-CL", {
                   style: "currency",
                   currency: "CLP",
                 }).format(publicacion.precio)}`
-              : "PRECIO: No disponible"}
+              : "Precio: No disponible"}
           </Typography>
 
-          {/* ESTADO */}
           <Chip
             label={formatEstadoLabel(publicacion.estado)}
             sx={{
-              mt: 2,
+              ...styles.chip,
               backgroundColor:
-                ESTADO_COLORS[
-                  normalizeEstadoKey(publicacion.estado)
-                ] || "#999",
-              color: "white",
-              fontWeight: "bold",
+                ESTADO_COLORS[normalizeEstadoKey(publicacion.estado)] || "#999",
             }}
           />
-{/* --- NUEVA SECCIÓN: VER RESEÑAS --- */}
-          <Box
-            sx={{
-              mt: 4,
-              pt: 2,
-              borderTop: "1px solid #eee", // Una línea sutil para separar
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography variant="h6" component="div">
-              ⭐⭐⭐⭐⭐
-            </Typography>
-            
-            <Button
-              variant="text"
-              color="primary"
-              sx={{ 
-                fontWeight: "bold", 
-                textDecoration: "underline",
-                fontSize: "1rem"
-              }}
-              onClick={() => {
-                // Aquí iría la lógica de redirección al otro frontend
-                // Ejemplo: window.location.href = "http://url-equipo-resenas.com/..."
-                alert("Redirigiendo al sistema de reseñas...");
-              }}
-            >
-              Ver Reseñas
-            </Button>
-          </Box>
-          {/* ---------------------------------- */}
-
         </Card>
 
         {/* BOTÓN EDITAR */}
@@ -495,7 +508,7 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
           fullWidth
           variant="outlined"
           startIcon={<EditIcon />}
-          sx={{ mt: 3, fontWeight: "bold", borderRadius: "20px" }}
+          sx={{ marginTop: "24px", fontWeight: "bold", borderRadius: "20px" }}
           onClick={handleEdit}
         >
           Editar Publicación
@@ -506,15 +519,11 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
-        onClose={() =>
-          setSnackbar({ ...snackbar, open: false })
-        }
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
         <Alert
           severity={snackbar.severity}
-          onClose={() =>
-            setSnackbar({ ...snackbar, open: false })
-          }
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
         >
           {snackbar.message}
         </Alert>

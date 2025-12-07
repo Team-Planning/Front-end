@@ -30,6 +30,8 @@ import {
   AddPhotoAlternate as AddPhotoAlternateIcon,
   CheckCircle as CheckIcon,
   CloudUpload as CloudUploadIcon,
+  Person as PersonIcon,
+  Storefront as StorefrontIcon,
 } from "@mui/icons-material";
 
 import publicacionesService from "../../services/publicaciones.service";
@@ -93,7 +95,6 @@ const schema = yup.object({
   producto: yup.string().required("Selecciona un producto asociado"),
   titulo: yup.string().required().min(5, "Mínimo 5 caracteres"),
   descripcion: yup.string().required().min(10, "Mínimo 10 caracteres"),
-  stock: yup.number().required().min(1),
   tipoEntrega: yup
     .array()
     .of(yup.string())
@@ -133,7 +134,6 @@ const CreatePublicacion = () => {
       producto: "",
       titulo: "",
       descripcion: "",
-      stock: "",
       tipoEntrega: [],
       precio: "", // Inicialización del precio
     },
@@ -182,6 +182,35 @@ const CreatePublicacion = () => {
   };
 
   // =====================================================
+  // DRAG & DROP ORDEN
+  // =====================================================
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData("index", String(index));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+
+    const from = Number(e.dataTransfer.getData("index"));
+    if (isNaN(from) || from === index) return;
+
+    const newOrder = [...images];
+    const [item] = newOrder.splice(from, 1);
+    newOrder.splice(index, 0, item);
+
+    setImages(newOrder);
+    setCurrentImageIndex(index);
+
+    setSnackbar({
+      open: true,
+      message: "Orden actualizado",
+      severity: "success",
+    });
+  };
+
+  // =====================================================
   // SUBMIT
   // =====================================================
   const onSubmit = async (data: any) => {
@@ -213,10 +242,9 @@ const CreatePublicacion = () => {
       }));
 
       // Guardado extra local y NO enviado al backend
-const extras = {
+      const extras = {
         categoriaMock: data.categoria,
         productoMock: data.producto,
-        stockMock: data.stock,
         tipoEntregaMock: data.tipoEntrega,
       };
 
@@ -265,26 +293,38 @@ const extras = {
         sx={{
           backgroundColor: "primary.main",
           color: "white",
-          p: 2,
+          p: 2.5,
           display: "flex",
           alignItems: "center",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1100,
+          boxShadow: "0 2px 8px rgba(0, 213, 99, 0.2)",
         }}
       >
         <IconButton
           onClick={() => navigate("/publicaciones")}
-          sx={{ color: "white", mr: 2 }}
+          sx={{ 
+            color: "white", 
+            mr: 2,
+            '&:hover': {
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+            },
+          }}
         >
           <ArrowBackIcon />
         </IconButton>
 
-        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-          Añadir Publicación
+        <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: 0.5 }}>
+          Crear Publicación
         </Typography>
       </Box>
 
-      {loading && <LinearProgress />}
+      {loading && <LinearProgress sx={{ position: "fixed", top: 64, left: 0, right: 0, zIndex: 1099 }} />}
 
-      <Box sx={{ maxWidth: 600, mx: "auto", p: 2 }}>
+      <Box sx={{ maxWidth: 600, mx: "auto", p: 2, pt: 10 }}>
         {/* INPUT FILE */}
         <input
           ref={fileInputRef}
@@ -295,9 +335,60 @@ const extras = {
           onChange={handleFileSelect}
         />
 
+        {/* BOTÓN DE PORTADA */}
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          <Button
+            variant="outlined"
+            size="medium"
+            disabled={
+              uploadingImages || images.length === 0 || currentImageIndex === 0
+            }
+            sx={{
+              borderColor: "primary.main",
+              color: "primary.main",
+              borderRadius: "12px",
+              fontWeight: 600,
+              textTransform: "none",
+              px: 3,
+              '&:hover': {
+                borderColor: "primary.dark",
+                backgroundColor: "rgba(0, 213, 99, 0.04)",
+              },
+            }}
+            onClick={() => {
+              if (currentImageIndex === 0) return;
+
+              const newOrder = [...images];
+              const [item] = newOrder.splice(currentImageIndex, 1);
+              newOrder.unshift(item);
+
+              setImages(newOrder);
+              setCurrentImageIndex(0);
+
+              setSnackbar({
+                open: true,
+                message: "Imagen definida como portada",
+                severity: "success",
+              });
+            }}
+          >
+            Definir como portada
+          </Button>
+        </Box>
+
         {/* GALERÍA */}
-        <Card sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
-          <Box sx={{ position: "relative", height: 280, background: "#eee" }}>
+        <Card sx={{ 
+          mb: 3, 
+          borderRadius: 3, 
+          overflow: "hidden",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+          border: "1px solid rgba(0, 0, 0, 0.06)",
+        }}>
+          <Box sx={{ 
+            position: "relative", 
+            height: 280, 
+            background: "linear-gradient(135deg, #f5f5f5 0%, #e8f5e9 100%)",
+          }}>
             {images.length > 0 ? (
               <>
                 <img
@@ -313,10 +404,15 @@ const extras = {
                   onClick={() => removeImage(currentImageIndex)}
                   sx={{
                     position: "absolute",
-                    top: 8,
-                    right: 8,
-                    backgroundColor: "rgba(0,0,0,0.5)",
+                    top: 12,
+                    right: 12,
+                    backgroundColor: "rgba(211, 47, 47, 0.9)",
                     color: "white",
+                    '&:hover': {
+                      backgroundColor: "rgba(211, 47, 47, 1)",
+                      transform: "scale(1.1)",
+                    },
+                    transition: "all 0.2s ease",
                   }}
                 >
                   <CloseIcon />
@@ -342,21 +438,31 @@ const extras = {
           </Box>
 
           {/* MINIATURAS */}
-          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", p: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", p: 2 }}>
             {images.map((img, i) => (
               <Box
                 key={i}
+                draggable
+                onDragStart={(e) => handleDragStart(e, i)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, i)}
                 onClick={() => setCurrentImageIndex(i)}
                 sx={{
-                  width: 68,
-                  height: 68,
-                  borderRadius: 1,
+                  width: 70,
+                  height: 70,
+                  borderRadius: 2,
                   overflow: "hidden",
                   border:
                     currentImageIndex === i
-                      ? "2px solid #1976d2"
-                      : "1px solid #ccc",
+                      ? "3px solid #00D563"
+                      : "2px solid #e0e0e0",
                   cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  boxShadow: currentImageIndex === i ? "0 4px 8px rgba(0, 213, 99, 0.3)" : "none",
+                  '&:hover': {
+                    transform: "scale(1.05)",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                  },
                 }}
               >
                 <img
@@ -374,17 +480,27 @@ const extras = {
               <Box
                 onClick={() => fileInputRef.current?.click()}
                 sx={{
-                  width: 68,
-                  height: 68,
-                  border: "2px dashed #1976d2",
-                  borderRadius: 1,
+                  width: 70,
+                  height: 70,
+                  border: "2px dashed #00D563",
+                  borderRadius: 2,
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
                   cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  backgroundColor: "rgba(0, 213, 99, 0.04)",
+                  '&:hover': {
+                    backgroundColor: "rgba(0, 213, 99, 0.08)",
+                    transform: "scale(1.05)",
+                  },
                 }}
               >
-                <AddPhotoAlternateIcon color="primary" />
+                {uploadingImages ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <AddPhotoAlternateIcon color="primary" />
+                )}
               </Box>
             )}
           </Box>
@@ -402,10 +518,98 @@ const extras = {
           </Typography>
         </Card>
 
+        {/* INFORMACIÓN DE VENDEDOR Y TIENDA */}
+        {/* TODO: Reemplazar "Vendedor 1" con user?.name y "Tienda Demo 1" con user?.tienda?.nombre cuando se implemente auth */}
+        <Card sx={{ 
+          mb: 3, 
+          p: 2.5,
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fff9 100%)',
+          border: '1px solid rgba(0, 213, 99, 0.2)',
+          boxShadow: '0 2px 8px rgba(0, 213, 99, 0.08)',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%', 
+                bgcolor: 'rgba(0, 213, 99, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(0, 213, 99, 0.25)',
+              }}>
+                <PersonIcon sx={{ color: '#00A84F', fontSize: '1.3rem' }} />
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Vendedor
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#00A84F', fontWeight: 600, fontSize: '0.95rem' }}>
+                  Vendedor 1
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Box sx={{ 
+              width: '1px', 
+              height: '40px', 
+              bgcolor: 'rgba(0, 213, 99, 0.2)',
+              display: { xs: 'none', sm: 'block' }
+            }} />
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%', 
+                bgcolor: 'rgba(0, 213, 99, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(0, 213, 99, 0.25)',
+              }}>
+                <StorefrontIcon sx={{ color: '#00A84F', fontSize: '1.3rem' }} />
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Tienda
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#00A84F', fontWeight: 600, fontSize: '0.95rem' }}>
+                  Tienda Demo 1
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Card>
+
         {/* FORMULARIO */}
-        <Card sx={{ p: 3, borderRadius: 2 }}>
+        <Card sx={{ 
+          p: 4, 
+          borderRadius: 3,
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+          border: "1px solid rgba(0, 0, 0, 0.06)",
+        }}>
           {/* CATEGORÍA */}
-          <FormControl fullWidth sx={{ mb: 2 }}>
+          <FormControl fullWidth sx={{ 
+            mb: 2.5,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'rgba(0, 213, 99, 0.03)',
+              borderRadius: 2,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 213, 99, 0.06)',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(0, 213, 99, 0.5)',
+                },
+              },
+              '&.Mui-focused': {
+                backgroundColor: 'rgba(0, 213, 99, 0.08)',
+                boxShadow: '0 0 0 3px rgba(0, 213, 99, 0.1)',
+              },
+            },
+          }}>
             <InputLabel>Categoría</InputLabel>
             <Controller
               name="categoria"
@@ -423,7 +627,24 @@ const extras = {
           </FormControl>
 
           {/* PRODUCTO */}
-          <FormControl fullWidth sx={{ mb: 2 }}>
+          <FormControl fullWidth sx={{ 
+            mb: 2.5,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'rgba(0, 213, 99, 0.03)',
+              borderRadius: 2,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 213, 99, 0.06)',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(0, 213, 99, 0.5)',
+                },
+              },
+              '&.Mui-focused': {
+                backgroundColor: 'rgba(0, 213, 99, 0.08)',
+                boxShadow: '0 0 0 3px rgba(0, 213, 99, 0.1)',
+              },
+            },
+          }}>
             <InputLabel>Producto asociado</InputLabel>
             <Controller
               name="producto"
@@ -448,7 +669,24 @@ const extras = {
           <TextField
             label="Título del producto"
             fullWidth
-            sx={{ mb: 2 }}
+            sx={{ 
+              mb: 2.5,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(0, 213, 99, 0.03)',
+                borderRadius: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 213, 99, 0.06)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(0, 213, 99, 0.5)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'rgba(0, 213, 99, 0.08)',
+                  boxShadow: '0 0 0 3px rgba(0, 213, 99, 0.1)',
+                },
+              },
+            }}
             {...register("titulo")}
             InputProps={{
               endAdornment:
@@ -464,7 +702,24 @@ const extras = {
             fullWidth
             multiline
             rows={3}
-            sx={{ mb: 2 }}
+            sx={{ 
+              mb: 2.5,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(0, 213, 99, 0.03)',
+                borderRadius: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 213, 99, 0.06)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(0, 213, 99, 0.5)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'rgba(0, 213, 99, 0.08)',
+                  boxShadow: '0 0 0 3px rgba(0, 213, 99, 0.1)',
+                },
+              },
+            }}
             {...register("descripcion")}
             InputProps={{
               endAdornment:
@@ -475,24 +730,15 @@ const extras = {
             }}
           />
 
-          {/* STOCK */}
-          <TextField
-            label="Stock"
-            type="number"
-            fullWidth
-            sx={{ mb: 3 }}
-            {...register("stock")}
-          />
-
           {/* TIPO ENTREGA */}
-          <Typography sx={{ fontSize: 13, mb: 1, ml: 0.3 }}>
+          <Typography sx={{ fontSize: 14, mb: 1.5, ml: 0.3, fontWeight: 500, color: 'text.secondary' }}>
             Tipo de entrega
           </Typography>
           <Controller
             name="tipoEntrega"
             control={control}
             render={({ field }) => (
-              <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+              <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
                 {["Presencial", "Envío"].map((op) => (
                   <Chip
                     key={op}
@@ -504,6 +750,21 @@ const extras = {
                     color={
                       field.value.includes(op) ? "primary" : "default"
                     }
+                    sx={{
+                      borderRadius: 2,
+                      fontWeight: 500,
+                      px: 1,
+                      height: 40,
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s ease',
+                      border: field.value.includes(op) ? 'none' : '2px solid rgba(0, 0, 0, 0.12)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: field.value.includes(op) 
+                          ? '0 4px 12px rgba(0, 213, 99, 0.3)'
+                          : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                      },
+                    }}
                     onClick={() => {
                       const exists = field.value.includes(op);
                       const updated = exists
@@ -522,7 +783,24 @@ const extras = {
             label="Precio"
             type="number"
             fullWidth
-            sx={{ mb: 3 }}
+            sx={{ 
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(0, 213, 99, 0.03)',
+                borderRadius: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 213, 99, 0.06)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(0, 213, 99, 0.5)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'rgba(0, 213, 99, 0.08)',
+                  boxShadow: '0 0 0 3px rgba(0, 213, 99, 0.1)',
+                },
+              },
+            }}
             {...register("precio")} // Registro del campo precio
           />
 
@@ -532,6 +810,19 @@ const extras = {
             size="large"
             disabled={loading || images.length === 0}
             onClick={handleSubmit(onSubmit)}
+            sx={{
+              py: 1.8,
+              fontSize: "1rem",
+              fontWeight: 600,
+              textTransform: "none",
+              borderRadius: 2,
+              boxShadow: "0 4px 12px rgba(0, 213, 99, 0.3)",
+              '&:hover': {
+                boxShadow: "0 6px 16px rgba(0, 213, 99, 0.4)",
+                transform: "translateY(-1px)",
+              },
+              transition: "all 0.2s ease",
+            }}
           >
             {uploadingImages ? (
               <>
