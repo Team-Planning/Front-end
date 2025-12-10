@@ -19,7 +19,10 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
 
   return (
     <Drawer anchor={"left"} open={openMenu} onClose={closeMenuAction}>
-      <Box className="flex flex-col justify-between bg-white p-4 w-[280px] h-[100vh]">
+      <Box 
+        className="flex flex-col justify-between p-4 w-[280px] h-[100vh]"
+        sx={{ backgroundColor: 'primary.main' }}
+      >
         <div>
           <Box className="flex flex-row justify-between p-4 items-center">
             <div className="flex items-center justify-between">
@@ -29,14 +32,14 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
                   JD
                 </Avatar>
                 <div className="ml-4">
-                  <h4 className="text-md font-medium text-(--color-blue)">
+                  <h4 className="text-md font-medium text-white">
                     John Doe
                   </h4>
-                  <p className="text-sm font-light text-(--color-blue">Admin</p>
+                  <p className="text-sm font-light text-white">Admin</p>
                 </div>
               </div>
             </div>
-            <div onClick={closeMenuAction}>
+            <div onClick={closeMenuAction} className="text-white cursor-pointer">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -57,9 +60,17 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
             {menuItems.map((item, index) => {
               return (
                 <Box
-                  className="flex flex-row justify-between items-center"
+                  className="flex flex-row justify-between items-center cursor-pointer text-white"
                   key={index}
                   onClick={() => navigate(item.href)}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      margin: '-8px',
+                    }
+                  }}
                 >
                   <Box className="flex flex-row items-center gap-4">
                     {item.icon}
@@ -68,6 +79,7 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
                         fontSize: "16px",
                         fontWeight: 400,
                         lineHeight: "20px",
+                        color: "white",
                       }}
                     >
                       {item.name}
@@ -114,7 +126,7 @@ function DrawerNav({ closeMenuAction, openMenu, menuItems }: DrawerNavProps) {
         { <img src={pulgaShopLogo} alt="Logo de PulgaShop" className="w-[60%] max-w-[380px]" /> }
 
         <p
-          className=" text-md font-normal leading-6 cursor-pointer underline p-1 text-gray-700"
+          className="text-md font-normal leading-6 cursor-pointer underline p-1 text-white"
           onClick={() => {
             navigate("/auth/login");
           }}

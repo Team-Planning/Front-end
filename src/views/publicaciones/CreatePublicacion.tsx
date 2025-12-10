@@ -113,6 +113,11 @@ const CreatePublicacion = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Obtener tienda seleccionada desde localStorage
+  const tiendaGuardada = localStorage.getItem('tienda_seleccionada');
+  const idTienda = tiendaGuardada ? parseInt(tiendaGuardada) : 1;
+  const nombreTienda = idTienda === 2 ? 'Tienda Demo 2' : 'Tienda Demo 1';
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -252,6 +257,7 @@ const CreatePublicacion = () => {
 
       const dto = {
         id_producto: "1",
+        id_tienda: idTienda,
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: Number(data.precio), // Envío del precio al backend
@@ -519,7 +525,7 @@ const CreatePublicacion = () => {
         </Card>
 
         {/* INFORMACIÓN DE VENDEDOR Y TIENDA */}
-        {/* TODO: Reemplazar "Vendedor 1" con user?.name y "Tienda Demo 1" con user?.tienda?.nombre cuando se implemente auth */}
+        {/* TODO: Reemplazar "Vendedor 1" con user?.name y tienda dinámica cuando se implemente auth */}
         <Card sx={{ 
           mb: 3, 
           p: 2.5,
@@ -577,7 +583,7 @@ const CreatePublicacion = () => {
                   Tienda
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#00A84F', fontWeight: 600, fontSize: '0.95rem' }}>
-                  Tienda Demo 1
+                  {nombreTienda}
                 </Typography>
               </Box>
             </Box>

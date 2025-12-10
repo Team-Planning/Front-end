@@ -432,7 +432,7 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
                   Tienda
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#00A84F', fontWeight: 600, fontSize: '0.95rem' }}>
-                  Tienda Demo 1
+                  {(publicacion as any).id_tienda === 2 ? 'Tienda Demo 2' : 'Tienda Demo 1'}
                 </Typography>
               </Box>
             </Box>

@@ -12,7 +12,7 @@ interface TiendaSelectorProps {
 
 const TiendaSelector: React.FC<TiendaSelectorProps> = ({ onTiendaSeleccionada }) => {
   const [tiendas, setTiendas] = useState<Tienda[]>([]);
-  const [tiendaSeleccionada, setTiendaSeleccionada] = useState<number | "">("");
+  const [tiendaSeleccionada, setTiendaSeleccionada] = useState<number>(1);
 
   useEffect(() => {
     // Simular tiendas para pruebas
@@ -21,6 +21,8 @@ const TiendaSelector: React.FC<TiendaSelectorProps> = ({ onTiendaSeleccionada })
       { id: 2, nombre: 'Tienda Demo 2' },
     ];
     setTiendas(mockTiendas);
+    // Notificar la tienda por defecto
+    onTiendaSeleccionada(1);
   }, []);
 
   const handleChange = (event: SelectChangeEvent<number>) => {

@@ -75,8 +75,12 @@ export default function PublicacionesList() {
   const [filter, setFilter] = useState<'TODAS' | 'ACTIVAS' | 'REVISION' | 'ELIMINADAS'>('TODAS');
   const [deleteDialog, setDeleteDialog] = useState<any>({ open: false, id: null, restore: false });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  const [idTienda, setIdTienda] = useState<number>(1); // Default tienda 1
-  const [nombreTienda, setNombreTienda] = useState<string>('Tienda Demo 1');
+  
+  // Inicializar desde localStorage o usar tienda 1 por defecto
+  const tiendaGuardada = localStorage.getItem('tienda_seleccionada');
+  const tiendaInicial = tiendaGuardada ? parseInt(tiendaGuardada) : 1;
+  const [idTienda, setIdTienda] = useState<number>(tiendaInicial);
+  const [nombreTienda, setNombreTienda] = useState<string>(tiendaInicial === 2 ? 'Tienda Demo 2' : 'Tienda Demo 1');
 
   useEffect(() => {
     loadPublicaciones();
@@ -175,6 +179,8 @@ export default function PublicacionesList() {
     setIdTienda(id);
     const tienda = tiendas.find((t) => t.id === id);
     setNombreTienda(tienda ? tienda.nombre : '');
+    // Guardar la tienda seleccionada en localStorage para que la use CreatePublicacion
+    localStorage.setItem('tienda_seleccionada', id.toString());
   };
 
   return (
