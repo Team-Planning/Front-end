@@ -38,6 +38,11 @@ const EditPublicacion = Loadable(
   lazy(() => import("../views/publicaciones/EditPublicacion"))
 );
 
+/* ****Reseñas***** */
+const Resenas = Loadable(
+  lazy(() => import("../views/resenas/Resenas"))
+);
+
 /* ****End Pages***** */
 
 const Router = [
@@ -100,6 +105,11 @@ const Router = [
         path: "publicaciones/editar/:id",
         exact: true,
         element: <EditPublicacion />,
+      },
+      {
+        path: "resenas/:id",
+        exact: true,
+        element: <Resenas />,
       },
       { path: "*", element: <Navigate to="/error/404" /> },
     ],

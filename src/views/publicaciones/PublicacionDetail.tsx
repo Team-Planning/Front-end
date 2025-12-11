@@ -20,6 +20,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Person as PersonIcon,
   Storefront as StorefrontIcon,
+  Star as StarIcon,
 } from "@mui/icons-material";
 
 import publicacionesService, {
@@ -503,16 +504,34 @@ const extrasMap = extrasRaw ? JSON.parse(extrasRaw) : {};
           />
         </Card>
 
-        {/* BOTÓN EDITAR */}
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<EditIcon />}
-          sx={{ marginTop: "24px", fontWeight: "bold", borderRadius: "20px" }}
-          onClick={handleEdit}
-        >
-          Editar Publicación
-        </Button>
+        {/* BOTONES DE ACCIÓN */}
+        <Box sx={{ display: 'flex', gap: 2, marginTop: '24px' }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<EditIcon />}
+            sx={{ fontWeight: "bold", borderRadius: "20px" }}
+            onClick={handleEdit}
+          >
+            Editar
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<StarIcon />}
+            sx={{ 
+              fontWeight: "bold", 
+              borderRadius: "20px",
+              backgroundColor: 'primary.main',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+              }
+            }}
+            onClick={() => navigate(`/resenas/${id}`)}
+          >
+            Reseñas
+          </Button>
+        </Box>
       </Box>
 
       {/* SNACKBAR */}
